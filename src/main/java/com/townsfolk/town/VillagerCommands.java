@@ -53,6 +53,22 @@ public final class VillagerCommands {
 		return TownReputation.Rank.of(reputation).ordinal() >= TownReputation.Rank.TRUSTED.ordinal();
 	}
 
+	/**
+	 * Friend (or better) with a villager's town may change its armour and hand item. Villagers with no
+	 * town, and wandering traders, have no town to befriend, so anyone may.
+	 */
+	public static boolean canEditGear(Player player, AbstractVillager villager) {
+		if (!(villager.level() instanceof ServerLevel level)) {
+			return false;
+		}
+		BlockPos town = villager.getAttached(ModRegistry.TOWN);
+		if (town == null || TownCenters.isDestroyed(level, town)) {
+			return true;
+		}
+		int reputation = TownReputation.get(level).get(town, player.getUUID());
+		return TownReputation.Rank.of(reputation).ordinal() >= TownReputation.Rank.FRIEND.ordinal();
+	}
+
 	/** Moves the villager to its next order; following always follows whoever clicked. */
 	public static void cycle(Player player, AbstractVillager villager) {
 		Command next = commandOf(villager).next();

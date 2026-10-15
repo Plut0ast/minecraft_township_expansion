@@ -3,7 +3,6 @@
   "container.townsfolk.town_center": "Town Center",
   "gui.townsfolk.town_center.population": "☺ %s  ⚙ %s",
   "gui.townsfolk.town_center.empty": "No villagers yet",
-  "gui.townsfolk.villager.title": "Villager",
   "gui.townsfolk.villager.hand": "Hand",
   "gui.townsfolk.villager.trade": "Trade",
   "gui.townsfolk.villager.no_trades": "This villager has nothing to trade",
@@ -26,5 +25,9 @@
   "gui.townsfolk.town_center.name": "Town name",
   "gui.townsfolk.town_center.rename": "Rename",
   "gui.townsfolk.town_center.rename_locked": "Reach Trusted with this town to rename it",
-  "message.townsfolk.town_center.founded": "Founded the town of %s."
+  "message.townsfolk.town_center.founded": "Founded the town of %s.",
+  "gui.townsfolk.villager.town": "⌂ %s",
+  "gui.townsfolk.villager.no_town": "No town",
+  "gui.townsfolk.villager.unemployed": "Unemployed",
+  "gui.townsfolk.villager.child": "Child"
 }

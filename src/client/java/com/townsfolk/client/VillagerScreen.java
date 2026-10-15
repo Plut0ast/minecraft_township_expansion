@@ -29,7 +29,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		Button trade = Button.builder(Component.translatable("gui.townsfolk.villager.trade"), b -> {
 				this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, VillagerMenu.BUTTON_TRADE);
 			})
-			.bounds(this.leftPos + 100, this.topPos + 70, 68, 20)
+			.bounds(this.leftPos + 100, this.topPos + 71, 68, 20)
 			.build();
 		trade.active = this.menu.data().canTrade();
 		if (!trade.active) {
@@ -40,7 +40,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		this.commandButton = Button.builder(commandLabel(this.menu.command()), b -> {
 				this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, VillagerMenu.BUTTON_COMMAND);
 			})
-			.bounds(this.leftPos + 100, this.topPos + 46, 68, 20)
+			.bounds(this.leftPos + 100, this.topPos + 49, 68, 20)
 			.build();
 		this.commandButton.active = this.menu.data().canCommand();
 		this.commandButton.setTooltip(Tooltip.create(Component.translatable(
@@ -86,12 +86,38 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		}
 	}
 
+	/** Cuts long text (such as a 32-character town name) to fit the panel, ending in an ellipsis. */
+	private String fit(Component text, int maxWidth) {
+		String value = text.getString();
+		if (this.font.width(value) <= maxWidth) {
+			return value;
+		}
+		return this.font.plainSubstrByWidth(value, maxWidth - this.font.width("…")) + "…";
+	}
+
+	/** Below Friend the gear slots are read-only, so they are shaded dark over the slot and its item. */
+	@Override
+	public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		super.extractContents(graphics, mouseX, mouseY, a);
+		if (!this.menu.data().canEdit()) {
+			for (int i = 0; i < VillagerMenu.EQUIPMENT_SLOTS; i++) {
+				Slot slot = this.menu.slots.get(i);
+				int sx = this.leftPos + slot.x;
+				int sy = this.topPos + slot.y;
+				graphics.fill(sx, sy, sx + 16, sy + 16, 0xB0202020);
+			}
+		}
+	}
+
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
 		VillagerMenu.Data data = this.menu.data();
-		graphics.text(this.font, Component.translatable("gui.townsfolk.villager.title"), this.titleLabelX, this.titleLabelY, Panels.TEXT, false);
-		graphics.text(this.font, Component.literal(data.name()), 100, 20, 0xFF202020, false);
-		graphics.text(this.font, data.profession(), 100, 32, 0xFF606060, false);
+		graphics.text(this.font, Component.literal(data.name()), this.titleLabelX, this.titleLabelY, Panels.TEXT, false);
+		graphics.text(this.font, data.profession(), 100, 20, 0xFF606060, false);
+		Component town = data.townName().isEmpty()
+			? Component.translatable("gui.townsfolk.villager.no_town")
+			: Component.translatable("gui.townsfolk.villager.town", data.townName());
+		graphics.text(this.font, this.fit(town, 68), 100, 31, 0xFF606060, false);
 		graphics.text(this.font, Component.translatable("gui.townsfolk.villager.hand"), 78, 62, Panels.TEXT, false);
 		graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, Panels.TEXT, false);
 	}

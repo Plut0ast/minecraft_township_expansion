@@ -71,11 +71,12 @@ public final class TownEvents {
 		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> penalize(entity, source, KILL_VILLAGER_PENALTY));
 
+		// Right-click trades as normal; shift-right-click (or right-clicking someone with nothing to trade) opens the view page.
 		UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
 			if (!(entity instanceof AbstractVillager villager) || player.isSpectator() || letVanillaHandle(player.getItemInHand(hand))) {
 				return InteractionResult.PASS;
 			}
-			if (hand != InteractionHand.MAIN_HAND) {
+			if (hand != InteractionHand.MAIN_HAND || (canTrade(villager) && !player.isShiftKeyDown())) {
 				return InteractionResult.PASS;
 			}
 			if (player instanceof ServerPlayer serverPlayer && villager.isAlive()) {
@@ -88,6 +89,33 @@ public final class TownEvents {
 	/** Items with their own villager interaction (renaming, leashing, spawn eggs) keep vanilla behaviour. */
 	private static boolean letVanillaHandle(ItemStack held) {
 		return held.is(Items.NAME_TAG) || held.is(Items.LEAD) || held.is(Items.VILLAGER_SPAWN_EGG) || held.is(Items.WANDERING_TRADER_SPAWN_EGG);
+	}
+
+	/** The job line on the villager screen. Vanilla calls the "no profession" job "Villager", which says nothing. */
+	private static Component jobOf(AbstractVillager villager) {
+		if (!(villager instanceof Villager v)) {
+			return villager.getType().getDescription();
+		}
+		if (v.isBaby()) {
+			return Component.translatable("gui.townsfolk.villager.child");
+		}
+		VillagerData villagerData = v.getVillagerData();
+		if (villagerData.profession().is(VillagerProfession.NONE)) {
+			return Component.translatable("gui.townsfolk.villager.unemployed");
+		}
+		return villagerData.profession().value().name();
+	}
+
+	/** Whether the villager has trades to show. Uses only synced data so client and server agree. */
+	private static boolean canTrade(AbstractVillager villager) {
+		if (villager.isBaby()) {
+			return false;
+		}
+		if (villager instanceof Villager v) {
+			VillagerData villagerData = v.getVillagerData();
+			return !villagerData.profession().is(VillagerProfession.NONE) && !villagerData.profession().is(VillagerProfession.NITWIT);
+		}
+		return true;
 	}
 
 	/** A player (directly or with a projectile) harming a town's villager loses reputation with that town. */
@@ -122,22 +150,19 @@ public final class TownEvents {
 			return;
 		}
 
-		Component job;
-		boolean canTrade;
-		if (villager instanceof Villager v) {
-			VillagerData villagerData = v.getVillagerData();
-			job = villagerData.profession().value().name();
-			canTrade = !villagerData.profession().is(VillagerProfession.NONE) && !villagerData.profession().is(VillagerProfession.NITWIT);
-		} else {
-			job = villager.getType().getDescription();
-			canTrade = true;
-		}
+		Component job = jobOf(villager);
+		BlockPos town = villager.getAttached(ModRegistry.TOWN);
+		String townName = town != null && player.level().isLoaded(town) && player.level().getBlockEntity(town) instanceof TownCenterBlockEntity townCenter
+			? townCenter.townName()
+			: "";
 		VillagerMenu.Data data = new VillagerMenu.Data(
 			villager.getId(),
 			VillagerNames.nameOf(villager),
 			job,
-			canTrade && !villager.isBaby(),
-			VillagerCommands.canCommand(player, villager)
+			townName,
+			canTrade(villager),
+			VillagerCommands.canCommand(player, villager),
+			VillagerCommands.canEditGear(player, villager)
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

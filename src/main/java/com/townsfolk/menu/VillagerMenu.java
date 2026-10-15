@@ -38,14 +38,19 @@ public class VillagerMenu extends AbstractContainerMenu {
 		EquipmentSlot.FEET, InventoryMenu.EMPTY_ARMOR_SLOT_BOOTS
 	);
 
-	/** {@code canCommand}: the viewer is Trusted by this villager's town and may give it orders. */
-	public record Data(int entityId, String name, Component profession, boolean canTrade, boolean canCommand) {
+	/**
+	 * {@code townName} is empty when the villager has no town. {@code canCommand}: the viewer is Trusted
+	 * by the villager's town and may give orders. {@code canEdit}: the viewer may change its gear.
+	 */
+	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT, Data::entityId,
 			ByteBufCodecs.STRING_UTF8, Data::name,
 			ComponentSerialization.TRUSTED_STREAM_CODEC, Data::profession,
+			ByteBufCodecs.STRING_UTF8, Data::townName,
 			ByteBufCodecs.BOOL, Data::canTrade,
 			ByteBufCodecs.BOOL, Data::canCommand,
+			ByteBufCodecs.BOOL, Data::canEdit,
 			Data::new
 		);
 	}
@@ -82,9 +87,9 @@ public class VillagerMenu extends AbstractContainerMenu {
 			VillagerEquipmentContainer equipment = new VillagerEquipmentContainer(villager);
 			for (int i = 0; i < 4; i++) {
 				EquipmentSlot slot = VillagerEquipmentContainer.SLOTS[i];
-				this.addSlot(new ArmorSlot(equipment, villager, slot, i, 8, 18 + i * 18, EMPTY_ICONS.get(slot)));
+				this.addSlot(new LockableArmorSlot(equipment, villager, slot, i, 8, 18 + i * 18, EMPTY_ICONS.get(slot), data.canEdit()));
 			}
-			this.addSlot(new HandSlot(equipment, VillagerEquipmentContainer.HAND_INDEX, 77, 72));
+			this.addSlot(new HandSlot(equipment, VillagerEquipmentContainer.HAND_INDEX, 77, 72, data.canEdit()));
 		} else {
 			// The villager is not loaded on this client; show empty placeholders rather than crash.
 			SimpleContainer placeholder = new SimpleContainer(EQUIPMENT_SLOTS);
@@ -183,23 +188,49 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return this.villager != null && this.villager.isAlive() && player.distanceToSqr(this.villager) <= 64.0;
 	}
 
-	/** Hand slot that refuses to touch items the villager is only holding temporarily (trade previews, bone meal). */
-	private static class HandSlot extends Slot {
-		private final VillagerEquipmentContainer equipment;
+	/** Armour slot that is read-only unless the viewer may change this villager's gear. */
+	private static class LockableArmorSlot extends ArmorSlot {
+		private final boolean editable;
 
-		HandSlot(VillagerEquipmentContainer equipment, int index, int x, int y) {
-			super(equipment, index, x, y);
-			this.equipment = equipment;
+		LockableArmorSlot(VillagerEquipmentContainer equipment, AbstractVillager villager, EquipmentSlot slot, int index, int x, int y,
+			Identifier emptyIcon, boolean editable) {
+			super(equipment, villager, slot, index, x, y, emptyIcon);
+			this.editable = editable;
 		}
 
 		@Override
 		public boolean mayPlace(ItemStack stack) {
-			return this.equipment.villager().getMainHandItem().isEmpty();
+			return this.editable && super.mayPlace(stack);
 		}
 
 		@Override
 		public boolean mayPickup(Player player) {
-			return this.equipment.handIsPlayerControlled() && super.mayPickup(player);
+			return this.editable && super.mayPickup(player);
+		}
+	}
+
+	/**
+	 * Hand slot that is read-only unless the viewer may change this villager's gear, and that refuses
+	 * to touch items the villager is only holding temporarily (trade previews, bone meal).
+	 */
+	private static class HandSlot extends Slot {
+		private final VillagerEquipmentContainer equipment;
+		private final boolean editable;
+
+		HandSlot(VillagerEquipmentContainer equipment, int index, int x, int y, boolean editable) {
+			super(equipment, index, x, y);
+			this.equipment = equipment;
+			this.editable = editable;
+		}
+
+		@Override
+		public boolean mayPlace(ItemStack stack) {
+			return this.editable && this.equipment.villager().getMainHandItem().isEmpty();
+		}
+
+		@Override
+		public boolean mayPickup(Player player) {
+			return this.editable && this.equipment.handIsPlayerControlled() && super.mayPickup(player);
 		}
 	}
 }
