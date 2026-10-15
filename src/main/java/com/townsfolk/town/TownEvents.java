@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerData;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
@@ -30,7 +31,7 @@ public final class TownEvents {
 
 	public static void init() {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
-			if (entity instanceof Villager villager) {
+			if (entity instanceof AbstractVillager villager) {
 				VillagerNames.ensureNamed(villager);
 			}
 		});
@@ -51,7 +52,7 @@ public final class TownEvents {
 		ServerTickEvents.END_LEVEL_TICK.register(TownCenters::tick);
 
 		UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
-			if (!(entity instanceof Villager villager) || player.isSpectator() || letVanillaHandle(player.getItemInHand(hand))) {
+			if (!(entity instanceof AbstractVillager villager) || player.isSpectator() || letVanillaHandle(player.getItemInHand(hand))) {
 				return InteractionResult.PASS;
 			}
 			if (hand != InteractionHand.MAIN_HAND) {
@@ -66,7 +67,7 @@ public final class TownEvents {
 
 	/** Items with their own villager interaction (renaming, leashing, spawn eggs) keep vanilla behaviour. */
 	private static boolean letVanillaHandle(ItemStack held) {
-		return held.is(Items.NAME_TAG) || held.is(Items.LEAD) || held.is(Items.VILLAGER_SPAWN_EGG);
+		return held.is(Items.NAME_TAG) || held.is(Items.LEAD) || held.is(Items.VILLAGER_SPAWN_EGG) || held.is(Items.WANDERING_TRADER_SPAWN_EGG);
 	}
 
 	private static void onEntityUnload(Entity entity, ServerLevel level) {
@@ -83,18 +84,26 @@ public final class TownEvents {
 		}
 	}
 
-	private static void openVillagerMenu(ServerPlayer player, Villager villager) {
+	private static void openVillagerMenu(ServerPlayer player, AbstractVillager villager) {
 		if (player.containerMenu instanceof VillagerMenu open && open.villager() == villager) {
 			return;
 		}
 
-		VillagerData villagerData = villager.getVillagerData();
-		boolean hasJob = !villagerData.profession().is(VillagerProfession.NONE) && !villagerData.profession().is(VillagerProfession.NITWIT);
+		Component job;
+		boolean canTrade;
+		if (villager instanceof Villager v) {
+			VillagerData villagerData = v.getVillagerData();
+			job = villagerData.profession().value().name();
+			canTrade = !villagerData.profession().is(VillagerProfession.NONE) && !villagerData.profession().is(VillagerProfession.NITWIT);
+		} else {
+			job = villager.getType().getDescription();
+			canTrade = true;
+		}
 		VillagerMenu.Data data = new VillagerMenu.Data(
 			villager.getId(),
 			VillagerNames.nameOf(villager),
-			villagerData.profession().value().name(),
-			hasJob && !villager.isBaby()
+			job,
+			canTrade && !villager.isBaby()
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

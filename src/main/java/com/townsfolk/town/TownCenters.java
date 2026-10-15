@@ -3,6 +3,9 @@ package com.townsfolk.town;
 import com.mojang.serialization.Codec;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.Townsfolk;
+import com.townsfolk.block.TownCenterBlockEntity;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +25,7 @@ import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Gives every village a Town Center. When a player is inside a village that has none yet, one is placed
@@ -72,6 +76,52 @@ public final class TownCenters {
 		if (set != null) {
 			set.remove(pos);
 		}
+	}
+
+	/** True when the chunk at {@code pos} is loaded and no Town Center stands there any more. */
+	public static boolean isDestroyed(ServerLevel level, BlockPos pos) {
+		return level.isLoaded(pos) && !(level.getBlockEntity(pos) instanceof TownCenterBlockEntity);
+	}
+
+	/** The town a villager without a town at {@code pos} should join: the newest one in range, nearest on ties. */
+	public static @Nullable BlockPos townFor(ServerLevel level, BlockPos pos) {
+		TownCenterBlockEntity best = null;
+		for (TownCenterBlockEntity town : townsNear(level, pos, null)) {
+			if (best == null
+				|| town.foundedAt() > best.foundedAt()
+				|| town.foundedAt() == best.foundedAt() && town.getBlockPos().distSqr(pos) < best.getBlockPos().distSqr(pos)) {
+				best = town;
+			}
+		}
+		return best == null ? null : best.getBlockPos();
+	}
+
+	/** The closest other town whose area overlaps {@code pos}, if any. */
+	public static @Nullable TownCenterBlockEntity nearestOtherTown(ServerLevel level, BlockPos pos) {
+		return townsNear(level, pos, pos).stream()
+			.min(Comparator.comparingDouble(town -> town.getBlockPos().distSqr(pos)))
+			.orElse(null);
+	}
+
+	private static List<TownCenterBlockEntity> townsNear(ServerLevel level, BlockPos pos, @Nullable BlockPos exclude) {
+		Set<BlockPos> loaded = LOADED.get(level.dimension());
+		List<TownCenterBlockEntity> towns = new ArrayList<>();
+		if (loaded == null) {
+			return towns;
+		}
+		int r = TownCenterBlockEntity.CLAIM_RADIUS;
+		for (BlockPos townPos : loaded) {
+			if (townPos.equals(exclude)
+				|| Math.abs(townPos.getX() - pos.getX()) > r
+				|| Math.abs(townPos.getY() - pos.getY()) > r
+				|| Math.abs(townPos.getZ() - pos.getZ()) > r) {
+				continue;
+			}
+			if (level.getBlockEntity(townPos) instanceof TownCenterBlockEntity town && !town.isRemoved()) {
+				towns.add(town);
+			}
+		}
+		return towns;
 	}
 
 	public static void tick(ServerLevel level) {

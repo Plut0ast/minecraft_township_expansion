@@ -17,7 +17,7 @@ public class TownsfolkClient implements ClientModInitializer {
 		MenuScreens.register(ModRegistry.VILLAGER_MENU, VillagerScreen::new);
 
 		LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
-			if (entityType == EntityTypes.VILLAGER) {
+			if (entityType == EntityTypes.VILLAGER || entityType == EntityTypes.WANDERING_TRADER) {
 				helper.register(new VillagerArmorLayer((RenderLayerParent<VillagerRenderState, VillagerModel>) renderer, context));
 			}
 		});

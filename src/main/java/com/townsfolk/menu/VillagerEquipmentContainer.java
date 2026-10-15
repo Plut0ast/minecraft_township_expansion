@@ -3,7 +3,7 @@ package com.townsfolk.menu;
 import com.townsfolk.ModRegistry;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -17,13 +17,13 @@ public class VillagerEquipmentContainer implements Container {
 	/** Set while this container writes to the villager, so the hand-protection mixin lets the change through. */
 	public static final ThreadLocal<Boolean> WRITING = ThreadLocal.withInitial(() -> false);
 
-	private final Villager villager;
+	private final AbstractVillager villager;
 
-	public VillagerEquipmentContainer(Villager villager) {
+	public VillagerEquipmentContainer(AbstractVillager villager) {
 		this.villager = villager;
 	}
 
-	public Villager villager() {
+	public AbstractVillager villager() {
 		return this.villager;
 	}
 

@@ -6,5 +6,7 @@
   "gui.townsfolk.villager.title": "Villager",
   "gui.townsfolk.villager.hand": "Hand",
   "gui.townsfolk.villager.trade": "Trade",
-  "gui.townsfolk.villager.no_trades": "This villager has nothing to trade"
+  "gui.townsfolk.villager.no_trades": "This villager has nothing to trade",
+  "message.townsfolk.town_center.no_town_nearby": "No other town within %s blocks. This Town Center starts a new town.",
+  "message.townsfolk.town_center.town_nearby": "Nearest town: %s blocks away at %s, %s, %s (%s villagers). Villagers here without a town will join this new town instead; that town keeps its current villagers."
 }

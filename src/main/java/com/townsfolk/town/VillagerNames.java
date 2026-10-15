@@ -2,7 +2,7 @@ package com.townsfolk.town;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 
 public final class VillagerNames {
 	private static final String[] NAMES = {
@@ -24,14 +24,14 @@ public final class VillagerNames {
 	}
 
 	/** Gives the villager a random name if it does not already have one. */
-	public static void ensureNamed(Villager villager) {
+	public static void ensureNamed(AbstractVillager villager) {
 		if (!villager.hasCustomName()) {
 			RandomSource random = villager.getRandom();
 			villager.setCustomName(Component.literal(NAMES[random.nextInt(NAMES.length)]));
 		}
 	}
 
-	public static String nameOf(Villager villager) {
+	public static String nameOf(AbstractVillager villager) {
 		Component name = villager.getCustomName();
 		return name != null ? name.getString() : villager.getType().getDescription().getString();
 	}

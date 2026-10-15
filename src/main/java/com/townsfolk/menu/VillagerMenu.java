@@ -11,7 +11,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -21,7 +23,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
-/** A villager's armour + hand slots, the player's inventory, and a Trade button (button id 0). */
+/** A villager's or wandering trader's armour + hand slots, the player's inventory, and a Trade button (button id 0). */
 public class VillagerMenu extends AbstractContainerMenu {
 	public static final int BUTTON_TRADE = 0;
 	public static final int EQUIPMENT_SLOTS = VillagerEquipmentContainer.SLOTS.length;
@@ -44,15 +46,15 @@ public class VillagerMenu extends AbstractContainerMenu {
 	}
 
 	private final Data data;
-	private final @Nullable Villager villager;
+	private final @Nullable AbstractVillager villager;
 
 	/** Client-side constructor: finds the villager by its network id. */
 	public VillagerMenu(int containerId, Inventory inventory, Data data) {
 		this(containerId, inventory, data,
-			inventory.player.level().getEntity(data.entityId()) instanceof Villager v ? v : null);
+			inventory.player.level().getEntity(data.entityId()) instanceof AbstractVillager v ? v : null);
 	}
 
-	public VillagerMenu(int containerId, Inventory inventory, Data data, @Nullable Villager villager) {
+	public VillagerMenu(int containerId, Inventory inventory, Data data, @Nullable AbstractVillager villager) {
 		super(ModRegistry.VILLAGER_MENU, containerId);
 		this.data = data;
 		this.villager = villager;
@@ -80,7 +82,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return this.data;
 	}
 
-	public @Nullable Villager villager() {
+	public @Nullable AbstractVillager villager() {
 		return this.villager;
 	}
 
@@ -91,7 +93,11 @@ public class VillagerMenu extends AbstractContainerMenu {
 		}
 		if (!player.level().isClientSide()) {
 			// Hand over to vanilla trading (opening it replaces this menu); mobInteract handles the "no trades" head shake and stats.
-			this.villager.mobInteract(player, InteractionHand.MAIN_HAND);
+			if (this.villager instanceof Villager v) {
+				v.mobInteract(player, InteractionHand.MAIN_HAND);
+			} else if (this.villager instanceof WanderingTrader trader) {
+				trader.mobInteract(player, InteractionHand.MAIN_HAND);
+			}
 		}
 		return true;
 	}

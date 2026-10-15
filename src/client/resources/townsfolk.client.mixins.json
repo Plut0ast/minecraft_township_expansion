@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "VillagerModelMixin",
-    "VillagerRendererMixin"
+    "VillagerRendererMixin",
+    "WanderingTraderRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -8,10 +8,10 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.inventory.Slot;
 
-/** Villager preview, name and profession, armour + hand slots, and a Trade button. */
+/** AbstractVillager preview, name and profession, armour + hand slots, and a Trade button. */
 public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	private float xMouse;
 	private float yMouse;
@@ -55,7 +55,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		}
 
 		Panels.inset(graphics, x + 26, y + 17, 49, 71, 0xFF000000);
-		Villager villager = this.menu.villager();
+		AbstractVillager villager = this.menu.villager();
 		if (villager != null) {
 			InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, x + 26, y + 17, x + 75, y + 88, 30, 0.0625F, this.xMouse, this.yMouse, villager);
 		}

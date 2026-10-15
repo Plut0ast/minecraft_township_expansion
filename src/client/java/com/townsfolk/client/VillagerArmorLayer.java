@@ -21,7 +21,7 @@ import net.minecraft.client.renderer.entity.state.ZombieVillagerRenderState;
 import net.minecraft.client.resources.model.EquipmentClientInfo;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.equipment.Equippable;
 
@@ -60,8 +60,8 @@ public class VillagerArmorLayer extends RenderLayer<VillagerRenderState, Village
 		return set;
 	}
 
-	/** Called while the villager's render state is extracted; copies its armour and pose. */
-	public static void extract(Villager villager, VillagerRenderState state) {
+	/** Called while the villager's render state is extracted; copies the armour it is wearing. */
+	public static void extract(AbstractVillager villager, VillagerRenderState state) {
 		ItemStack head = renderable(villager, EquipmentSlot.HEAD);
 		ItemStack chest = renderable(villager, EquipmentSlot.CHEST);
 		ItemStack legs = renderable(villager, EquipmentSlot.LEGS);
@@ -72,16 +72,6 @@ public class VillagerArmorLayer extends RenderLayer<VillagerRenderState, Village
 		}
 
 		ZombieVillagerRenderState armor = new ZombieVillagerRenderState();
-		armor.ageInTicks = state.ageInTicks;
-		armor.walkAnimationPos = state.walkAnimationPos;
-		armor.walkAnimationSpeed = state.walkAnimationSpeed;
-		armor.yRot = state.yRot;
-		armor.xRot = state.xRot;
-		armor.bodyRot = state.bodyRot;
-		armor.isBaby = state.isBaby;
-		armor.ageScale = state.ageScale;
-		armor.pose = state.pose;
-		armor.entityType = state.entityType;
 		armor.headEquipment = head;
 		armor.chestEquipment = chest;
 		armor.legsEquipment = legs;
@@ -89,7 +79,7 @@ public class VillagerArmorLayer extends RenderLayer<VillagerRenderState, Village
 		state.setData(ARMOR, armor);
 	}
 
-	private static ItemStack renderable(Villager villager, EquipmentSlot slot) {
+	private static ItemStack renderable(AbstractVillager villager, EquipmentSlot slot) {
 		ItemStack stack = villager.getItemBySlot(slot);
 		return HumanoidArmorLayer.shouldRender(stack, slot) ? stack.copy() : ItemStack.EMPTY;
 	}
@@ -100,6 +90,18 @@ public class VillagerArmorLayer extends RenderLayer<VillagerRenderState, Village
 		if (armor == null || state.isInvisible) {
 			return;
 		}
+		// Copy the pose now rather than at extraction: screens like the villager menu turn the
+		// villager towards the mouse after extraction, and the armour has to follow.
+		armor.ageInTicks = state.ageInTicks;
+		armor.walkAnimationPos = state.walkAnimationPos;
+		armor.walkAnimationSpeed = state.walkAnimationSpeed;
+		armor.yRot = state.yRot;
+		armor.xRot = state.xRot;
+		armor.bodyRot = state.bodyRot;
+		armor.isBaby = state.isBaby;
+		armor.ageScale = state.ageScale;
+		armor.pose = state.pose;
+		armor.entityType = state.entityType;
 
 		for (EquipmentSlot slot : ARMOR_SLOTS) {
 			ItemStack stack = switch (slot) {
