@@ -163,7 +163,8 @@ public final class TownEvents {
 			townName,
 			canTrade(villager),
 			VillagerCommands.canCommand(player, villager),
-			VillagerCommands.canEditGear(player, villager)
+			VillagerCommands.canEditGear(player, villager),
+			villager instanceof Villager v && FarmWork.isFarmer(v) ? FarmWork.capacity((ServerLevel) v.level(), v) : 0
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

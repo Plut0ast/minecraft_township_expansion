@@ -10,6 +10,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
@@ -30,6 +31,9 @@ public class VillagerMenu extends AbstractContainerMenu {
 	public static final int BUTTON_TRADE = 0;
 	public static final int BUTTON_COMMAND = 1;
 	public static final int EQUIPMENT_SLOTS = VillagerEquipmentContainer.SLOTS.length;
+	/** Where a farmer's carry slots sit, and how much taller the screen gets to fit them. */
+	public static final int CARRY_Y = 103;
+	public static final int CARRY_EXTRA_HEIGHT = 26;
 
 	private static final Map<EquipmentSlot, Identifier> EMPTY_ICONS = Map.of(
 		EquipmentSlot.HEAD, InventoryMenu.EMPTY_ARMOR_SLOT_HELMET,
@@ -42,7 +46,8 @@ public class VillagerMenu extends AbstractContainerMenu {
 	 * {@code townName} is empty when the villager has no town. {@code canCommand}: the viewer is Trusted
 	 * by the villager's town and may give orders. {@code canEdit}: the viewer may change its gear.
 	 */
-	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit) {
+	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit,
+		int carrySlots) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT, Data::entityId,
 			ByteBufCodecs.STRING_UTF8, Data::name,
@@ -51,6 +56,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 			ByteBufCodecs.BOOL, Data::canTrade,
 			ByteBufCodecs.BOOL, Data::canCommand,
 			ByteBufCodecs.BOOL, Data::canEdit,
+			ByteBufCodecs.VAR_INT, Data::carrySlots,
 			Data::new
 		);
 	}
@@ -90,6 +96,10 @@ public class VillagerMenu extends AbstractContainerMenu {
 				this.addSlot(new LockableArmorSlot(equipment, villager, slot, i, 8, 18 + i * 18, EMPTY_ICONS.get(slot), data.canEdit()));
 			}
 			this.addSlot(new HandSlot(equipment, VillagerEquipmentContainer.HAND_INDEX, 77, 72, data.canEdit()));
+			// A farmer's pockets: as many slots as its farm gives it room for.
+			for (int i = 0; i < this.carrySlots(); i++) {
+				this.addSlot(new LockableSlot(villager.getInventory(), i, 8 + i * 18, CARRY_Y, data.canEdit()));
+			}
 		} else {
 			// The villager is not loaded on this client; show empty placeholders rather than crash.
 			SimpleContainer placeholder = new SimpleContainer(EQUIPMENT_SLOTS);
@@ -97,13 +107,22 @@ public class VillagerMenu extends AbstractContainerMenu {
 				this.addSlot(new Slot(placeholder, i, 8, 18 + i * 18));
 			}
 			this.addSlot(new Slot(placeholder, VillagerEquipmentContainer.HAND_INDEX, 77, 72));
+			SimpleContainer carryPlaceholder = new SimpleContainer(Math.max(1, this.carrySlots()));
+			for (int i = 0; i < this.carrySlots(); i++) {
+				this.addSlot(new LockableSlot(carryPlaceholder, i, 8 + i * 18, CARRY_Y, false));
+			}
 		}
 
-		this.addStandardInventorySlots(inventory, 8, 104);
+		this.addStandardInventorySlots(inventory, 8, 104 + (this.carrySlots() > 0 ? CARRY_EXTRA_HEIGHT : 0));
 	}
 
 	public Data data() {
 		return this.data;
+	}
+
+	/** Farmer carry slots shown on this menu (0 for everyone else); never more than a villager's 8 pockets. */
+	public int carrySlots() {
+		return Math.min(this.data.carrySlots(), 8);
 	}
 
 	public @Nullable AbstractVillager villager() {
@@ -154,10 +173,11 @@ public class VillagerMenu extends AbstractContainerMenu {
 
 		ItemStack stack = slot.getItem();
 		ItemStack original = stack.copy();
-		int playerStart = EQUIPMENT_SLOTS;
+		int carryStart = EQUIPMENT_SLOTS;
+		int playerStart = carryStart + this.carrySlots();
 		int playerEnd = this.slots.size();
 
-		if (slotIndex < EQUIPMENT_SLOTS) {
+		if (slotIndex < playerStart) {
 			if (!this.moveItemStackTo(stack, playerStart, playerEnd, true)) {
 				return ItemStack.EMPTY;
 			}
@@ -170,7 +190,13 @@ public class VillagerMenu extends AbstractContainerMenu {
 				}
 			}
 			Slot hand = this.slots.get(VillagerEquipmentContainer.HAND_INDEX);
-			if (!moved && !(hand.mayPlace(stack) && this.moveItemStackTo(stack, VillagerEquipmentContainer.HAND_INDEX, VillagerEquipmentContainer.HAND_INDEX + 1, false))) {
+			if (!moved && hand.mayPlace(stack)) {
+				moved = this.moveItemStackTo(stack, VillagerEquipmentContainer.HAND_INDEX, VillagerEquipmentContainer.HAND_INDEX + 1, false);
+			}
+			if (!moved && this.carrySlots() > 0 && this.slots.get(carryStart).mayPlace(stack)) {
+				moved = this.moveItemStackTo(stack, carryStart, playerStart, false);
+			}
+			if (!moved) {
 				return ItemStack.EMPTY;
 			}
 		}
@@ -186,6 +212,26 @@ public class VillagerMenu extends AbstractContainerMenu {
 	@Override
 	public boolean stillValid(Player player) {
 		return this.villager != null && this.villager.isAlive() && player.distanceToSqr(this.villager) <= 64.0;
+	}
+
+	/** A plain slot that is read-only unless the viewer may change this villager's gear. */
+	private static class LockableSlot extends Slot {
+		private final boolean editable;
+
+		LockableSlot(Container container, int index, int x, int y, boolean editable) {
+			super(container, index, x, y);
+			this.editable = editable;
+		}
+
+		@Override
+		public boolean mayPlace(ItemStack stack) {
+			return this.editable;
+		}
+
+		@Override
+		public boolean mayPickup(Player player) {
+			return this.editable && super.mayPickup(player);
+		}
 	}
 
 	/** Armour slot that is read-only unless the viewer may change this villager's gear. */

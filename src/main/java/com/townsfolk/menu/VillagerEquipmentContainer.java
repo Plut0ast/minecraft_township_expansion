@@ -32,6 +32,25 @@ public class VillagerEquipmentContainer implements Container {
 		return this.villager.getMainHandItem().isEmpty() || this.villager.getAttachedOrElse(ModRegistry.HAND_OWNED, false);
 	}
 
+	/**
+	 * Puts something in the villager's hand from code (a farmer's harvest), marking it so villager AI
+	 * will not swap it out, and so it drops if the villager dies.
+	 */
+	public static void setHand(AbstractVillager villager, ItemStack stack) {
+		WRITING.set(true);
+		try {
+			villager.setItemSlot(EquipmentSlot.MAINHAND, stack);
+		} finally {
+			WRITING.set(false);
+		}
+		villager.setGuaranteedDrop(EquipmentSlot.MAINHAND);
+		if (stack.isEmpty()) {
+			villager.removeAttached(ModRegistry.HAND_OWNED);
+		} else {
+			villager.setAttached(ModRegistry.HAND_OWNED, true);
+		}
+	}
+
 	@Override
 	public int getContainerSize() {
 		return SLOTS.length;

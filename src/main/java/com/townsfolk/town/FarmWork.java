@@ -1,6 +1,7 @@
 package com.townsfolk.town;
 
 import com.townsfolk.ModRegistry;
+import com.townsfolk.menu.VillagerEquipmentContainer;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
@@ -17,6 +18,7 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmlandBlock;
@@ -32,6 +34,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Farming order for farmers: during the day, harvest ripe crops around where the order was given,
  * replant them, take the harvest to the closest chest (or barrel), and fetch seeds from it when out.
+ * <p>
+ * The harvest goes into the farmer's hand first, then its pockets. How many pocket slots a farmer
+ * uses grows with the size of its farm ({@link #capacity}).
  */
 public final class FarmWork {
 	/** How far from where the order was given the farmer looks for farmland. */
@@ -44,6 +49,9 @@ public final class FarmWork {
 	private static final double REACH = 1.6;
 	private static final float WALK_SPEED = 0.5F;
 	private static final int THINK_INTERVAL_TICKS = 20;
+	/** One extra pocket slot for every this many farmland blocks, up to a villager's 8 pockets. */
+	private static final int FARMLAND_PER_SLOT = 16;
+	private static final int MAX_SLOTS = 8;
 
 	private enum Action { HARVEST, PLANT, DEPOSIT, FETCH_SEEDS }
 
@@ -53,6 +61,19 @@ public final class FarmWork {
 	private static final Map<Villager, Task> TASKS = new WeakHashMap<>();
 
 	private FarmWork() {
+	}
+
+	/** Pocket slots this farmer uses: 1, plus one per {@link #FARMLAND_PER_SLOT} farmland around its farm, up to 8. */
+	public static int capacity(ServerLevel level, Villager villager) {
+		BlockPos center = villager.getAttachedOrElse(ModRegistry.FARM_ANCHOR, villager.blockPosition());
+		int farmland = 0;
+		for (BlockPos pos : BlockPos.betweenClosed(
+			center.offset(-FARM_RADIUS, -FARM_HEIGHT, -FARM_RADIUS), center.offset(FARM_RADIUS, FARM_HEIGHT, FARM_RADIUS))) {
+			if (level.getBlockState(pos).getBlock() instanceof FarmlandBlock) {
+				farmland++;
+			}
+		}
+		return Math.min(MAX_SLOTS, 1 + farmland / FARMLAND_PER_SLOT);
 	}
 
 	public static boolean isFarmer(Villager villager) {
@@ -123,7 +144,7 @@ public final class FarmWork {
 	private static boolean isStillValid(ServerLevel level, Villager villager, Task task) {
 		return switch (task.action()) {
 			case HARVEST -> isRipe(level.getBlockState(task.pos()));
-			case PLANT -> isEmptyFarmland(level, task.pos()) && hasSeeds(villager.getInventory());
+			case PLANT -> isEmptyFarmland(level, task.pos()) && hasSeeds(villager);
 			case DEPOSIT, FETCH_SEEDS -> HopperBlockEntity.getContainerAt(level, task.pos()) != null;
 		};
 	}
@@ -131,9 +152,10 @@ public final class FarmWork {
 	/** Priorities: unload when full, harvest, plant (fetching seeds if out), unload leftovers. */
 	private static @Nullable Task chooseTask(ServerLevel level, Villager villager, BlockPos anchor) {
 		SimpleContainer inventory = villager.getInventory();
+		int capacity = capacity(level, villager);
 		BlockPos chest = closestChest(level, villager.blockPosition());
 
-		if (chest != null && isAlmostFull(inventory)) {
+		if (chest != null && isFull(villager, capacity)) {
 			return new Task(Action.DEPOSIT, chest);
 		}
 		BlockPos ripe = null;
@@ -151,21 +173,21 @@ public final class FarmWork {
 				emptyDist = dist;
 			}
 		}
-		if (ripe != null && inventory.canAddItem(ItemStack.EMPTY)) {
+		if (ripe != null && !isFull(villager, capacity)) {
 			return new Task(Action.HARVEST, ripe);
 		}
 		if (ripe != null) {
 			return chest != null ? new Task(Action.DEPOSIT, chest) : null;
 		}
 		if (empty != null) {
-			if (hasSeeds(inventory)) {
+			if (hasSeeds(villager)) {
 				return new Task(Action.PLANT, empty);
 			}
 			if (chest != null && chestHasSeeds(level, chest)) {
 				return new Task(Action.FETCH_SEEDS, chest);
 			}
 		}
-		if (chest != null && hasHarvest(inventory)) {
+		if (chest != null && hasHarvest(villager)) {
 			return new Task(Action.DEPOSIT, chest);
 		}
 		return null;
@@ -184,7 +206,22 @@ public final class FarmWork {
 		return stack.is(ItemTags.VILLAGER_PLANTABLE_SEEDS) && stack.getItem() instanceof BlockItem;
 	}
 
-	private static boolean hasSeeds(SimpleContainer inventory) {
+	/** What a farm gives: crops and seeds. Only these are put in the hand or taken to the chest from it. */
+	private static boolean isProduce(ItemStack stack) {
+		return isSeed(stack) || stack.is(Items.WHEAT) || stack.is(Items.BEETROOT) || stack.is(Items.POISONOUS_POTATO);
+	}
+
+	/** The hand can hold the harvest when it is empty or already holds produce (not something a player gave). */
+	private static boolean handHoldsProduce(Villager villager) {
+		ItemStack hand = villager.getMainHandItem();
+		return hand.isEmpty() || isProduce(hand);
+	}
+
+	private static boolean hasSeeds(Villager villager) {
+		if (isSeed(villager.getMainHandItem())) {
+			return true;
+		}
+		SimpleContainer inventory = villager.getInventory();
 		for (int i = 0; i < inventory.getContainerSize(); i++) {
 			if (isSeed(inventory.getItem(i))) {
 				return true;
@@ -194,7 +231,12 @@ public final class FarmWork {
 	}
 
 	/** Anything other than seeds (which are kept for replanting). */
-	private static boolean hasHarvest(SimpleContainer inventory) {
+	private static boolean hasHarvest(Villager villager) {
+		ItemStack hand = villager.getMainHandItem();
+		if (isProduce(hand) && !isSeed(hand)) {
+			return true;
+		}
+		SimpleContainer inventory = villager.getInventory();
 		for (int i = 0; i < inventory.getContainerSize(); i++) {
 			ItemStack stack = inventory.getItem(i);
 			if (!stack.isEmpty() && !isSeed(stack)) {
@@ -204,14 +246,57 @@ public final class FarmWork {
 		return false;
 	}
 
-	private static boolean isAlmostFull(SimpleContainer inventory) {
-		int used = 0;
-		for (int i = 0; i < inventory.getContainerSize(); i++) {
-			if (!inventory.getItem(i).isEmpty()) {
-				used++;
+	/** No room left: the hand is full (or holds a player's item) and every pocket slot it may use is taken. */
+	private static boolean isFull(Villager villager, int capacity) {
+		ItemStack hand = villager.getMainHandItem();
+		if (hand.isEmpty() || (isProduce(hand) && hand.getCount() < hand.getMaxStackSize())) {
+			return false;
+		}
+		SimpleContainer inventory = villager.getInventory();
+		for (int i = 0; i < Math.min(capacity, inventory.getContainerSize()); i++) {
+			ItemStack stack = inventory.getItem(i);
+			if (stack.isEmpty() || stack.getCount() < stack.getMaxStackSize()) {
+				return false;
 			}
 		}
-		return used >= inventory.getContainerSize() - 1;
+		return true;
+	}
+
+	/** Hand first, then the first {@code capacity} pocket slots. Returns what did not fit. */
+	private static ItemStack carry(Villager villager, ItemStack stack, int capacity) {
+		ItemStack hand = villager.getMainHandItem();
+		if (handHoldsProduce(villager)) {
+			if (hand.isEmpty()) {
+				VillagerEquipmentContainer.setHand(villager, stack.copy());
+				return ItemStack.EMPTY;
+			}
+			if (ItemStack.isSameItemSameComponents(hand, stack) && hand.getCount() < hand.getMaxStackSize()) {
+				int moved = Math.min(stack.getCount(), hand.getMaxStackSize() - hand.getCount());
+				VillagerEquipmentContainer.setHand(villager, hand.copyWithCount(hand.getCount() + moved));
+				stack = stack.copyWithCount(stack.getCount() - moved);
+				if (stack.isEmpty()) {
+					return ItemStack.EMPTY;
+				}
+			}
+		}
+		SimpleContainer inventory = villager.getInventory();
+		int slots = Math.min(capacity, inventory.getContainerSize());
+		for (int i = 0; i < slots && !stack.isEmpty(); i++) {
+			ItemStack slot = inventory.getItem(i);
+			if (ItemStack.isSameItemSameComponents(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+				int moved = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
+				slot.grow(moved);
+				stack = stack.copyWithCount(stack.getCount() - moved);
+			}
+		}
+		for (int i = 0; i < slots && !stack.isEmpty(); i++) {
+			if (inventory.getItem(i).isEmpty()) {
+				inventory.setItem(i, stack);
+				stack = ItemStack.EMPTY;
+			}
+		}
+		inventory.setChanged();
+		return stack;
 	}
 
 	private static void harvest(ServerLevel level, Villager villager, BlockPos pos) {
@@ -219,8 +304,9 @@ public final class FarmWork {
 		if (!isRipe(state)) {
 			return;
 		}
+		int capacity = capacity(level, villager);
 		for (ItemStack drop : Block.getDrops(state, level, pos, null, villager, ItemStack.EMPTY)) {
-			ItemStack left = villager.getInventory().addItem(drop);
+			ItemStack left = carry(villager, drop, capacity);
 			if (!left.isEmpty()) {
 				Block.popResource(level, pos, left);
 			}
@@ -237,13 +323,22 @@ public final class FarmWork {
 		for (int i = 0; i < inventory.getContainerSize(); i++) {
 			ItemStack stack = inventory.getItem(i);
 			if (isSeed(stack) && stack.getItem() instanceof BlockItem seed) {
-				level.setBlockAndUpdate(pos, seed.getBlock().defaultBlockState());
-				level.playSound(null, pos, SoundEvents.CROP_PLANTED, SoundSource.BLOCKS, 1.0F, 1.0F);
+				placeCrop(level, pos, seed);
 				stack.shrink(1);
 				inventory.setChanged();
 				return;
 			}
 		}
+		ItemStack hand = villager.getMainHandItem();
+		if (isSeed(hand) && hand.getItem() instanceof BlockItem seed) {
+			placeCrop(level, pos, seed);
+			VillagerEquipmentContainer.setHand(villager, hand.copyWithCount(hand.getCount() - 1));
+		}
+	}
+
+	private static void placeCrop(ServerLevel level, BlockPos pos, BlockItem seed) {
+		level.setBlockAndUpdate(pos, seed.getBlock().defaultBlockState());
+		level.playSound(null, pos, SoundEvents.CROP_PLANTED, SoundSource.BLOCKS, 1.0F, 1.0F);
 	}
 
 	/** Puts the harvest (and any seeds beyond what is needed for replanting) into the chest. */
@@ -275,6 +370,15 @@ public final class FarmWork {
 				inventory.setItem(i, ItemStack.EMPTY);
 			}
 		}
+		ItemStack hand = villager.getMainHandItem();
+		if (isProduce(hand)) {
+			int keep = isSeed(hand) ? Math.min(hand.getCount(), Math.max(0, SEEDS_TO_KEEP - seedsKept)) : 0;
+			int toStore = hand.getCount() - keep;
+			if (toStore > 0) {
+				ItemStack left = HopperBlockEntity.addItem(null, chest, hand.copyWithCount(toStore), null);
+				VillagerEquipmentContainer.setHand(villager, hand.copyWithCount(keep + left.getCount()));
+			}
+		}
 		inventory.setChanged();
 		chest.setChanged();
 		chestSound(level, chestPos);
@@ -292,7 +396,7 @@ public final class FarmWork {
 			if (isSeed(stack)) {
 				ItemStack taken = stack.split(Math.min(wanted, stack.getCount()));
 				wanted -= taken.getCount();
-				ItemStack left = villager.getInventory().addItem(taken);
+				ItemStack left = carry(villager, taken, capacity(level, villager));
 				if (!left.isEmpty()) {
 					stack.grow(left.getCount());
 					break;

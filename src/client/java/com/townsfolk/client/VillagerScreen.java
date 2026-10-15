@@ -20,7 +20,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	private float yMouse;
 
 	public VillagerScreen(VillagerMenu menu, Inventory inventory, Component title) {
-		super(menu, inventory, title, 176, 186);
+		super(menu, inventory, title, 176, 186 + (menu.carrySlots() > 0 ? VillagerMenu.CARRY_EXTRA_HEIGHT : 0));
 		this.inventoryLabelY = this.imageHeight - 94;
 	}
 
@@ -101,7 +101,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		super.extractContents(graphics, mouseX, mouseY, a);
 		if (!this.menu.data().canEdit()) {
-			for (int i = 0; i < VillagerMenu.EQUIPMENT_SLOTS; i++) {
+			for (int i = 0; i < VillagerMenu.EQUIPMENT_SLOTS + this.menu.carrySlots(); i++) {
 				Slot slot = this.menu.slots.get(i);
 				int sx = this.leftPos + slot.x;
 				int sy = this.topPos + slot.y;
@@ -120,6 +120,9 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 			: Component.translatable("gui.townsfolk.villager.town", data.townName());
 		graphics.text(this.font, this.fit(town, 68), 100, 31, 0xFF606060, false);
 		graphics.text(this.font, Component.translatable("gui.townsfolk.villager.hand"), 78, 62, Panels.TEXT, false);
+		if (this.menu.carrySlots() > 0) {
+			graphics.text(this.font, Component.translatable("gui.townsfolk.villager.carrying"), 8, VillagerMenu.CARRY_Y - 10, Panels.TEXT, false);
+		}
 		graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, Panels.TEXT, false);
 	}
 }

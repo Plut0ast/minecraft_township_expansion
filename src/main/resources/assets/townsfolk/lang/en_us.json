@@ -48,5 +48,6 @@
   "gui.townsfolk.town_center.players": "Players (%s)",
   "gui.townsfolk.town_center.villagers": "Villagers (%s)",
   "gui.townsfolk.town_center.golems": "Golems (%s)",
-  "gui.townsfolk.villager.command.farm": "Farming"
+  "gui.townsfolk.villager.command.farm": "Farming",
+  "gui.townsfolk.villager.carrying": "Carrying"
 }
