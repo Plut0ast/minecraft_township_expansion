@@ -7,7 +7,6 @@ import com.townsfolk.town.TownReputation;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -35,12 +34,8 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	private static final int NEXT_RANK_Y = 39;
 	private static final int NAV_Y = 162;
 
-	// Vanilla chat colours.
 	private static final int HEADER_COLOR = 0xFF404040;
-	private static final int PLAYER_COLOR = 0xFFFFAA00;
-	private static final int VILLAGER_COLOR = 0xFFFFFFFF;
-	private static final int GOLEM_COLOR = 0xFFAAAAAA;
-	private static final int ENEMY_COLOR = 0xFFAA0000;
+	private static final int NAME_COLOR = 0xFFFFFFFF;
 
 	/**
 	 * A list line. Headers ("Villagers (5)") are drawn dark without a shadow, like vanilla labels.
@@ -50,7 +45,7 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	}
 
 	private static final int REMOVE_X = LIST_X + LIST_W - 16;
-	private static final int REMOVE_COLOR = 0xFFFF5555;
+	private static final int REMOVE_COLOR = 0xFFAAAAAA;
 	private static final int REMOVE_HOVER_COLOR = 0xFFFFFFFF;
 
 	private int scroll;
@@ -98,7 +93,7 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		return this.menu.home().players().contains(me);
 	}
 
-	/** Sections with headings: players (gold), villagers (white), golems (grey). Empty sections are left out. */
+	/** Sections with headings for players, villagers and golems. Empty sections are left out. */
 	private List<Row> rows() {
 		List<Row> rows = new ArrayList<>();
 		TownCenterMenu.TownView town = this.current();
@@ -109,19 +104,19 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		if (!town.players().isEmpty()) {
 			rows.add(header("gui.townsfolk.town_center.players", town.players().size()));
 			for (String player : town.players()) {
-				rows.add(new Row(Component.literal(player), PLAYER_COLOR, false, -1));
+				rows.add(new Row(Component.literal(player), NAME_COLOR, false, -1));
 			}
 		}
 		if (!town.villagers().isEmpty()) {
 			rows.add(header("gui.townsfolk.town_center.villagers", town.villagers().size()));
 			for (int i = 0; i < town.villagers().size(); i++) {
-				rows.add(new Row(Component.literal(town.villagers().get(i)), VILLAGER_COLOR, false, removable ? i : -1));
+				rows.add(new Row(Component.literal(town.villagers().get(i)), NAME_COLOR, false, removable ? i : -1));
 			}
 		}
 		if (!town.golems().isEmpty()) {
 			rows.add(header("gui.townsfolk.town_center.golems", town.golems().size()));
 			for (String golem : town.golems()) {
-				rows.add(new Row(Component.literal(golem), GOLEM_COLOR, false, -1));
+				rows.add(new Row(Component.literal(golem), NAME_COLOR, false, -1));
 			}
 		}
 		return rows;
@@ -182,9 +177,8 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		int count = this.visibleTowns().size();
 		this.prevButton.active = count > 1;
 		this.nextButton.active = count > 1;
-		this.filterButton.setMessage(this.playersOnly
-			? Component.literal("☻").withStyle(ChatFormatting.YELLOW)
-			: Component.literal("☻"));
+		// Filled face while filtering to towns with players, hollow face otherwise.
+		this.filterButton.setMessage(Component.literal(this.playersOnly ? "☻" : "☺"));
 
 		boolean member = this.isMemberOfHome();
 		this.joinButton.setMessage(Component.translatable(home && member ? "gui.townsfolk.town_center.member" : "gui.townsfolk.town_center.join"));
@@ -345,7 +339,7 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		TownReputation.Rank rank = TownReputation.Rank.of(reputation);
 		TownReputation.Rank next = rank.next();
 		graphics.text(this.font, Component.translatable("gui.townsfolk.town_center.reputation", rank.displayName(), reputation), LIST_X, RANK_Y,
-			rank == TownReputation.Rank.ENEMY ? ENEMY_COLOR : Panels.TEXT, false);
+			Panels.TEXT, false);
 
 		Component where = this.viewingHome()
 			? Component.translatable("gui.townsfolk.town_center.here")
