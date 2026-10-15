@@ -1,5 +1,6 @@
 package com.townsfolk.work;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.VillagerEquipmentContainer;
 import com.townsfolk.town.FarmWork;
@@ -68,7 +69,7 @@ public final class SmithWork {
 			repairChestTools(smith, level, site);
 			return;
 		}
-		if (level.getGameTime() < NEXT_GIFT.getOrDefault(smith, 0L)) {
+		if (!TownsfolkConfig.smithGifts || level.getGameTime() < NEXT_GIFT.getOrDefault(smith, 0L)) {
 			return;
 		}
 		Gift gift = findGift(smith, level);

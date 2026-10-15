@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -26,7 +27,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * {@code /town} for operators: list towns and view or change players' reputation with them.
+ * {@code /town} for operators: list towns, view or change players' reputation with them, and reload
+ * the settings file.
  * A town is given by name (Tab completes; quote names with spaces) or {@code nearest}.
  */
 public final class TownCommand {
@@ -62,6 +64,11 @@ public final class TownCommand {
 		dispatcher.register(Commands.literal("town")
 			.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
 			.then(Commands.literal("list").executes(TownCommand::list))
+			.then(Commands.literal("reload").executes(ctx -> {
+				TownsfolkConfig.load();
+				ctx.getSource().sendSuccess(() -> Component.translatable("commands.townsfolk.reload", TownsfolkConfig.file().toString()), true);
+				return 1;
+			}))
 			.then(Commands.literal("reputation")
 				.then(Commands.literal("get")
 					.then(townArgument()

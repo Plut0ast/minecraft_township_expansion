@@ -1,5 +1,6 @@
 package com.townsfolk.mixin;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.town.RepairPayloads;
 import com.townsfolk.town.Sentry;
 import com.townsfolk.town.TownArrival;
@@ -41,7 +42,7 @@ public abstract class VillagerMixin {
 			return;
 		}
 		int nitwitParents = (isNitwit((Villager) (Object) this) ? 1 : 0) + (partner instanceof Villager other && isNitwit(other) ? 1 : 0);
-		if (level.getRandom().nextFloat() < NITWIT_BABY_CHANCE[nitwitParents]) {
+		if (TownsfolkConfig.nitwitBabies && level.getRandom().nextFloat() < NITWIT_BABY_CHANCE[nitwitParents]) {
 			baby.setVillagerData(baby.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.NITWIT));
 		}
 	}
@@ -51,7 +52,8 @@ public abstract class VillagerMixin {
 	private void townsfolk$nitwitFromSpawnEgg(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnReason,
 		@Nullable SpawnGroupData groupData, CallbackInfoReturnable<SpawnGroupData> cir) {
 		Villager villager = (Villager) (Object) this;
-		boolean fromEgg = spawnReason == EntitySpawnReason.SPAWN_ITEM_USE || spawnReason == EntitySpawnReason.DISPENSER;
+		boolean fromEgg = TownsfolkConfig.nitwitSpawnEggs
+			&& (spawnReason == EntitySpawnReason.SPAWN_ITEM_USE || spawnReason == EntitySpawnReason.DISPENSER);
 		if (fromEgg && villager.getVillagerData().profession().is(VillagerProfession.NONE)
 			&& villager.getRandom().nextFloat() < NITWIT_BABY_CHANCE[0]) {
 			villager.setVillagerData(villager.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.NITWIT));

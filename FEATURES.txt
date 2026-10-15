@@ -1,0 +1,127 @@
+TOWNSHIP EXPANSION
+Fabric mod for Minecraft 26.3. Needs Fabric API and Java 25. Works in existing worlds.
+Source: https://github.com/Plut0ast/minecraft_township_expansion
+
+Villages become real towns. Every villager has a name, a job they actually do, and an
+opinion of you. Trade with a town to earn its trust, and it will open up: give orders,
+rename it, arm its guards, and join it as one of its own.
+
+
+TOWNS
+-----
+- Every village gets a Town Center by its bell. You can also craft your own and found a
+  town anywhere.
+- Each town gets a name, like Oakhollow or Ravenmere.
+- Villagers and iron golems within 64 blocks join the newest Town Center nearby. When a
+  villager joins, it walks to the Town Center and celebrates.
+- Placing a Town Center tells you what you founded and how far away the nearest other
+  town is.
+- Breaking a Town Center frees its villagers, and they look for another town.
+- Every village farm gets a chest with a few starter seeds.
+
+Town Center recipe:
+    [      ] [ Map     ] [       ]
+    [Diamond] [ Planks  ] [Diamond]
+    [Planks ] [ Planks  ] [Planks ]
+
+The Town Center screen shows:
+- Your rank with the town, with a progress bar showing how far you are from the next rank.
+- Everyone who lives there, listed as Players, Villagers (with their jobs) and Golems.
+- Arrows to browse every other town in the dimension, and a filter that shows only towns
+  with players.
+- Trusted players can rename the town, Heroes can join it, and Trusted members can remove
+  villagers from it.
+
+
+REPUTATION
+----------
+Each town remembers you separately. Every trade with one of its villagers earns +1.
+Hitting one of its villagers costs 5, and killing one costs another 25.
+
+  Rank       Reputation    What it unlocks
+  ---------  ------------  ------------------------------------------------------
+  Enemy      -10 or less   Iron golems and Sentries attack you
+  Stranger   -9 to 9       You can still feed villagers
+  Visitor    10+
+  Friend     50+           Change villagers' gear and pockets, rename villagers
+  Trusted    150+          Give villagers orders, rename the town, arm nitwits
+  Hero       400+          Join the town, and Sentries guard you
+
+
+VILLAGERS
+---------
+- Every villager has a name, and a Friend can rename it.
+- Right-click to trade as usual. Shift-right-click to open its page: health, job, town,
+  armour, food and pockets.
+- Armour shows on the villager, protects it, and wears out like yours.
+- Food: villagers start with some bread and eat to heal when they're hurt. Anyone except
+  an Enemy can hand them food, and they fetch more from farmers and butchers when they
+  run low.
+- Orders (Trusted): Wandering, Staying, Following, and Farming for farmers.
+- Villagers with worn-out gear walk to the right smith to get it repaired.
+
+Trades and your standing:
+Every villager rerolls its trades each Minecraft morning. It also remembers how much YOU
+have traded with it. That standing runs from Novice to Master, unlocks more of its trades
+for you, and carries over between rerolls.
+
+
+JOBS
+----
+Villagers work on their own during the day, near their workstation.
+
+  Farmer         When ordered to farm: harvests, replants, and stores crops in the
+                 nearest chest
+  Fisherman      Fishes at nearby water and keeps the catch in its barrel
+  Shepherd       Gets a fenced pen with three sheep, shears them, and stores the wool
+  Butcher        Smokes raw meat from its chest and feeds hungry villagers
+  Cleric         Heals hurt villagers nearby
+  Fletcher       Crafts arrows from flint, sticks and feathers, and keeps archers supplied
+  Armorer        Repairs armour and kits Sentries out in chainmail and iron
+  Leatherworker  Repairs leather armour and gives other villagers leather armour
+  Weaponsmith    Repairs weapons and hands out iron hoes, axes and shears
+  Toolsmith      Repairs tools, including any left in its chest, for an emerald each
+  Mason, Librarian, Cartographer: coming later
+
+Get your gear repaired:
+Smiths have a Repair button next to their trade screen. Put in your damaged item and some
+emeralds, and it comes back repaired with its enchantments kept.
+  1 emerald:  leather, wood or gold
+  2 emeralds: stone, chainmail or iron
+  4 emeralds: diamond or netherite armour
+  6 emeralds: netherite tools
+
+
+NITWITS, SENTRIES & GOLEMS
+--------------------------
+- Give a nitwit a sword or a bow (you need to be Trusted) and it becomes a Sentry.
+  Sentries fight hostile mobs in their town and attack the town's Enemies. Archers shoot
+  arrows from their pockets.
+- A Sentry that follows a Hero becomes that Hero's bodyguard.
+- Babies are more likely to be nitwits if a parent is one: 20% with no nitwit parents,
+  70% with one, 100% with two. Spawn eggs give a nitwit 20% of the time.
+- Iron golems get names like Rivet-42, join towns, and go after the town's Enemies.
+
+
+COMMANDS
+--------
+For operators, or in single-player with cheats on. Tab completes town names, and
+"nearest" picks the closest town.
+
+  /town list
+  /town reputation get <town> [players]
+  /town reputation set <town> <players> <amount>
+  /town reputation add <town> <players> <amount>
+  /town reputation rank <town> <players> hero
+  /town reload                      re-reads the settings file
+
+
+SETTINGS
+--------
+The file config/townsfolk.properties is created the first time the game starts.
+Set any option to false to turn that feature off (for example dailyTradeRerolls=false).
+Every job, Sentries, repairs, food, farm chests, Town Center generation, nitwit chances
+and the reputation amounts can be changed. Use /town reload or restart to apply.
+
+
+Township Expansion is still in development, so expect changes.

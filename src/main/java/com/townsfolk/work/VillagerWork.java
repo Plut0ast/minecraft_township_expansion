@@ -1,5 +1,6 @@
 package com.townsfolk.work;
 
+import com.townsfolk.TownsfolkConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -18,25 +19,37 @@ public final class VillagerWork {
 			return;
 		}
 		// Worn gear first: off to the right smith for a free repair.
-		if (SmithWork.visitForRepair(villager, level)) {
+		if (TownsfolkConfig.repairVisits && SmithWork.visitForRepair(villager, level)) {
 			return;
 		}
 		BlockPos site = WorkHelper.jobSite(villager, level);
-		if (site == null) {
+		if (site == null || !TownsfolkConfig.villagerJobs) {
 			return;
 		}
 		if (FishermanWork.isFisherman(villager)) {
-			FishermanWork.tick(villager, level, site);
+			if (TownsfolkConfig.fishermen) {
+				FishermanWork.tick(villager, level, site);
+			}
 		} else if (ShepherdWork.isShepherd(villager)) {
-			ShepherdWork.tick(villager, level, site);
+			if (TownsfolkConfig.shepherds) {
+				ShepherdWork.tick(villager, level, site);
+			}
 		} else if (ButcherWork.isButcher(villager)) {
-			ButcherWork.tick(villager, level, site);
+			if (TownsfolkConfig.butchers) {
+				ButcherWork.tick(villager, level, site);
+			}
 		} else if (ClericWork.isCleric(villager)) {
-			ClericWork.tick(villager, level, site);
+			if (TownsfolkConfig.clerics) {
+				ClericWork.tick(villager, level, site);
+			}
 		} else if (FletcherWork.isFletcher(villager)) {
-			FletcherWork.tick(villager, level, site);
+			if (TownsfolkConfig.fletchers) {
+				FletcherWork.tick(villager, level, site);
+			}
 		} else if (SmithWork.isSmith(villager)) {
-			SmithWork.tick(villager, level, site);
+			if (TownsfolkConfig.smiths) {
+				SmithWork.tick(villager, level, site);
+			}
 		}
 	}
 }

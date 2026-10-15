@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import java.util.Iterator;
 import java.util.Map;
@@ -35,6 +36,9 @@ public final class TownArrival {
 
 	/** Called when a villager joins a town. */
 	public static void start(Villager villager, ServerLevel level) {
+		if (!TownsfolkConfig.arrivalWalk) {
+			return;
+		}
 		villager.setAttached(ModRegistry.ARRIVAL_DEADLINE, level.getGameTime() + ARRIVAL_TIME_LIMIT);
 	}
 

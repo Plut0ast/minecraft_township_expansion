@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.block.TownCenterBlockEntity;
 import com.townsfolk.menu.VillagerMenu;
@@ -31,10 +32,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class TownEvents {
-	/** Reputation lost for each hit on one of a town's villagers. */
-	private static final int HURT_VILLAGER_PENALTY = -5;
-	/** Extra reputation lost for killing one of a town's villagers. */
-	private static final int KILL_VILLAGER_PENALTY = -25;
 
 	private TownEvents() {
 	}
@@ -70,10 +67,10 @@ public final class TownEvents {
 
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamage, damageTaken, blocked) -> {
 			if (damageTaken > 0.0F) {
-				penalize(entity, source, HURT_VILLAGER_PENALTY);
+				penalize(entity, source, -TownsfolkConfig.reputationLostPerHit);
 			}
 		});
-		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> penalize(entity, source, KILL_VILLAGER_PENALTY));
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> penalize(entity, source, -TownsfolkConfig.reputationLostPerKill));
 
 		// Right-click trades as normal; shift-right-click (or right-clicking someone with nothing to trade) opens the view page.
 		UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {

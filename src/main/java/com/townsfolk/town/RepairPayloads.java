@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.Townsfolk;
 import com.townsfolk.menu.RepairMenu;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
@@ -58,7 +59,7 @@ public final class RepairPayloads {
 	/** Called when a player starts trading with a villager. */
 	public static void onStartTrading(Villager villager, Player player) {
 		if (player instanceof ServerPlayer serverPlayer) {
-			boolean repairs = RepairMenu.Kind.of(villager) != null && !villager.isBaby();
+			boolean repairs = TownsfolkConfig.playerRepairs && RepairMenu.Kind.of(villager) != null && !villager.isBaby();
 			ServerPlayNetworking.send(serverPlayer, new Trader(repairs ? villager.getId() : -1));
 		}
 	}
@@ -68,7 +69,7 @@ public final class RepairPayloads {
 			return;
 		}
 		RepairMenu.Kind kind = RepairMenu.Kind.of(smith);
-		if (kind == null) {
+		if (kind == null || !TownsfolkConfig.playerRepairs) {
 			return;
 		}
 		smith.setTradingPlayer(null);

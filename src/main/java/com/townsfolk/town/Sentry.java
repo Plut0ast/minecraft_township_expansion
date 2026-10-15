@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.block.TownCenterBlockEntity;
 import java.util.Comparator;
@@ -68,7 +69,8 @@ public final class Sentry {
 
 	/** A nitwit of a town holding a sword. */
 	public static boolean isSentry(Villager villager) {
-		return canBecomeSentry(villager) && isSentryWeapon(villager.getMainHandItem()) && villager.getAttached(ModRegistry.TOWN) != null;
+		return TownsfolkConfig.sentries && canBecomeSentry(villager) && isSentryWeapon(villager.getMainHandItem())
+			&& villager.getAttached(ModRegistry.TOWN) != null;
 	}
 
 	/** Swords for close fighting, bows for shooting arrows from the Sentry's pockets. */

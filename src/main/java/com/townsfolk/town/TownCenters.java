@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.mojang.serialization.Codec;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.Townsfolk;
@@ -155,7 +156,8 @@ public final class TownCenters {
 				continue;
 			}
 
-			if (hasTownCenterIn(level, village.getBoundingBox()) || tryPlace(level, village)) {
+			// With generation off the village is left unmarked, so turning it back on still works.
+			if (TownsfolkConfig.generateTownCenters && (hasTownCenterIn(level, village.getBoundingBox()) || tryPlace(level, village))) {
 				data.markHandled(key);
 			}
 		}

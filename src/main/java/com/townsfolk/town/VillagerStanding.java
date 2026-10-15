@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.mixin.AbstractVillagerInvoker;
 import java.util.ArrayList;
@@ -95,18 +96,25 @@ public final class VillagerStanding {
 		}
 		long day = level.getOverworldClockTime() / 24000L; // a Minecraft day; sleeping skips ahead
 		boolean rolled = villager.getAttached(ModRegistry.OFFER_TIERS) != null;
-		if (!rolled || villager.getAttachedOrElse(ModRegistry.LAST_ROLL_DAY, -1L) != day) {
+		boolean due = TownsfolkConfig.dailyTradeRerolls && villager.getAttachedOrElse(ModRegistry.LAST_ROLL_DAY, -1L) != day;
+		// Per-player standing needs every trade tagged with its level, so roll once even without daily rerolls.
+		boolean needsTiers = TownsfolkConfig.perPlayerStanding && !rolled;
+		if (due || needsTiers) {
 			reroll(villager, level);
 			villager.setAttached(ModRegistry.LAST_ROLL_DAY, day);
 		}
 	}
 
-	/** A fresh set of trades for every level, each tagged with the level it unlocks at. */
+	/**
+	 * A fresh set of trades, each tagged with the level it unlocks at: every level with per-player
+	 * standing, otherwise only up to the villager's own (vanilla) level.
+	 */
 	private static void reroll(Villager villager, ServerLevel level) {
 		VillagerProfession profession = villager.getVillagerData().profession().value();
 		MerchantOffers offers = new MerchantOffers();
 		List<Integer> tiers = new ArrayList<>();
-		for (int tier = 1; tier <= MAX_LEVEL; tier++) {
+		int maxTier = TownsfolkConfig.perPlayerStanding ? MAX_LEVEL : villager.getVillagerData().level();
+		for (int tier = 1; tier <= maxTier; tier++) {
 			ResourceKey<TradeSet> set = profession.getTrades(tier);
 			if (set == null) {
 				continue;
@@ -125,7 +133,7 @@ public final class VillagerStanding {
 
 	/** Before the trade screen opens: show this player only their unlocked trades, at their own level. */
 	public static void beginTrading(Villager villager, Player player, int[] xpField) {
-		if (!(villager.level() instanceof ServerLevel level) || !hasTrades(villager)) {
+		if (!TownsfolkConfig.perPlayerStanding || !(villager.level() instanceof ServerLevel level) || !hasTrades(villager)) {
 			return;
 		}
 		endTrading(villager, xpField);

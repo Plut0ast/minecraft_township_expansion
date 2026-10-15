@@ -16,6 +16,7 @@ public class Townsfolk implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		TownsfolkConfig.load();
 		ModRegistry.init();
 		TownEvents.init();
 		RenameTownPayload.register();

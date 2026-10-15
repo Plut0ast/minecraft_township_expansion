@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.VillagerEquipmentContainer;
 import java.util.Map;
@@ -83,7 +84,7 @@ public final class VillagerFood {
 
 	/** Every villager starts out with a little bread in its food slot, once. */
 	public static void giveStartingFood(Villager villager) {
-		if (villager.getAttachedOrElse(ModRegistry.STARTING_FOOD_GIVEN, false)) {
+		if (!TownsfolkConfig.villagerFood || villager.getAttachedOrElse(ModRegistry.STARTING_FOOD_GIVEN, false)) {
 			return;
 		}
 		villager.setAttached(ModRegistry.STARTING_FOOD_GIVEN, true);
@@ -94,6 +95,10 @@ public final class VillagerFood {
 
 	/** Runs right after the villager's brain each tick (when nothing more important is steering it). */
 	public static void afterBrainTick(Villager villager, ServerLevel level) {
+		if (!TownsfolkConfig.villagerFood) {
+			TRIPS.remove(villager);
+			return;
+		}
 		long time = level.getGameTime() + villager.getId();
 		if (time % EAT_INTERVAL_TICKS == 0 && villager.getHealth() < villager.getMaxHealth()) {
 			eat(villager, level);

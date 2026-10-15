@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.mojang.serialization.Codec;
 import com.townsfolk.Townsfolk;
 import java.util.ArrayList;
@@ -55,6 +56,9 @@ public final class FarmChests {
 
 	/** Places the village's farm chests once all its farms are loaded. Safe to call repeatedly. */
 	public static void ensurePlaced(ServerLevel level, StructureStart village) {
+		if (!TownsfolkConfig.farmChests) {
+			return;
+		}
 		Data data = level.getDataStorage().computeIfAbsent(Data.TYPE);
 		long key = village.getChunkPos().pack();
 		if (data.done.contains(key)) {

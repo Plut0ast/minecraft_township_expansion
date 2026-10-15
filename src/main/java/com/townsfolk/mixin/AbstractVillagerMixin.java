@@ -1,5 +1,6 @@
 package com.townsfolk.mixin;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.VillagerMenu;
 import com.townsfolk.town.TownCenters;
@@ -36,7 +37,7 @@ public abstract class AbstractVillagerMixin {
 		}
 		BlockPos town = villager.getAttached(ModRegistry.TOWN);
 		if (town != null && !TownCenters.isDestroyed(level, town)) {
-			TownReputation.get(level).add(town, player.getUUID(), 1);
+			TownReputation.get(level).add(town, player.getUUID(), TownsfolkConfig.reputationPerTrade);
 		}
 	}
 }

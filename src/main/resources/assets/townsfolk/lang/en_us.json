@@ -57,5 +57,6 @@
   "gui.townsfolk.repair.hint.armor": "Any damaged armour",
   "gui.townsfolk.repair.hint.leather": "Damaged leather armour",
   "gui.townsfolk.repair.hint.weapon": "Any damaged weapon",
-  "gui.townsfolk.repair.hint.tool": "Any damaged tool"
+  "gui.townsfolk.repair.hint.tool": "Any damaged tool",
+  "commands.townsfolk.reload": "Reloaded settings from %s"
 }

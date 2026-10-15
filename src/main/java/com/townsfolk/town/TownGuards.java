@@ -1,5 +1,6 @@
 package com.townsfolk.town;
 
+import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.block.TownCenterBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -17,7 +18,7 @@ public final class TownGuards {
 	}
 
 	public static void tick(ServerLevel level) {
-		if (level.getGameTime() % CHECK_INTERVAL_TICKS != 0) {
+		if (!TownsfolkConfig.golemsAttackEnemies || level.getGameTime() % CHECK_INTERVAL_TICKS != 0) {
 			return;
 		}
 
