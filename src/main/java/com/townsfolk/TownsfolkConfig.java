@@ -38,9 +38,22 @@ public final class TownsfolkConfig {
 	// Villagers
 	public static boolean villagerFood;
 	public static boolean arrivalWalk;
-	public static boolean sentries;
 	public static boolean nitwitBabies;
 	public static boolean nitwitSpawnEggs;
+	// Sentries
+	public static boolean sentries;
+	public static boolean swordSentries;
+	public static boolean archerSentries;
+	public static boolean sentryBodyguards;
+	public static boolean sentriesAttackEnemies;
+	public static boolean sentriesNeedArrows;
+	public static boolean sentryWeaponsWearOut;
+	public static double sentryGuardRadius;
+	public static double sentryBodyguardRadius;
+	public static double sentryBowRange;
+	public static double sentryDamageMultiplier;
+	public static int sentrySwordCooldown;
+	public static int sentryBowCooldown;
 	// Towns
 	public static boolean generateTownCenters;
 	public static boolean farmChests;
@@ -68,9 +81,22 @@ public final class TownsfolkConfig {
 		section("Villagers");
 		add("villagerFood", "true", "Villagers have food, eat to heal, start with bread and fetch food from farmers and butchers.");
 		add("arrivalWalk", "true", "Villagers walk to the Town Center and celebrate when they join a town.");
-		add("sentries", "true", "Nitwits armed with a sword or bow become Sentries.");
 		add("nitwitBabies", "true", "Babies can be born nitwits (20% / 70% / 100% by nitwit parents).");
 		add("nitwitSpawnEggs", "true", "Villagers from spawn eggs have a 20% chance to be nitwits.");
+		section("Sentries");
+		add("sentries", "true", "Master switch: nitwits armed with a sword or bow become Sentries.");
+		add("swordSentries", "true", "Nitwits holding a sword become Sentries.");
+		add("archerSentries", "true", "Nitwits holding a bow become archer Sentries.");
+		add("sentryBodyguards", "true", "A Sentry following a Hero of its town guards that player.");
+		add("sentriesAttackEnemies", "true", "Sentries attack players who are Enemies of their town (off = mobs only).");
+		add("sentriesNeedArrows", "true", "Archers use arrows from their pockets. Off = they never run out.");
+		add("sentryWeaponsWearOut", "true", "Sentries' swords and bows lose durability when used.");
+		add("sentryGuardRadius", "16", "How far (in blocks) a Sentry looks for trouble while guarding its town.");
+		add("sentryBodyguardRadius", "12", "How far (in blocks) around its Hero a bodyguard Sentry looks for trouble.");
+		add("sentryBowRange", "14", "How far (in blocks) archer Sentries shoot from.");
+		add("sentryDamageMultiplier", "1.0", "Multiplies Sentries' sword and arrow damage (1.0 = same as a player).");
+		add("sentrySwordCooldown", "20", "Ticks between sword hits (20 ticks = 1 second).");
+		add("sentryBowCooldown", "30", "Ticks between arrows (20 ticks = 1 second).");
 		section("Towns");
 		add("generateTownCenters", "true", "Villages get a Town Center automatically when a player first visits.");
 		add("farmChests", "true", "Village farms get a chest with starter seeds.");
@@ -127,6 +153,18 @@ public final class TownsfolkConfig {
 		villagerFood = bool(values, "villagerFood");
 		arrivalWalk = bool(values, "arrivalWalk");
 		sentries = bool(values, "sentries");
+		swordSentries = bool(values, "swordSentries");
+		archerSentries = bool(values, "archerSentries");
+		sentryBodyguards = bool(values, "sentryBodyguards");
+		sentriesAttackEnemies = bool(values, "sentriesAttackEnemies");
+		sentriesNeedArrows = bool(values, "sentriesNeedArrows");
+		sentryWeaponsWearOut = bool(values, "sentryWeaponsWearOut");
+		sentryGuardRadius = Math.max(1.0, decimal(values, "sentryGuardRadius"));
+		sentryBodyguardRadius = Math.max(1.0, decimal(values, "sentryBodyguardRadius"));
+		sentryBowRange = Math.max(2.0, decimal(values, "sentryBowRange"));
+		sentryDamageMultiplier = Math.max(0.0, decimal(values, "sentryDamageMultiplier"));
+		sentrySwordCooldown = Math.max(1, integer(values, "sentrySwordCooldown"));
+		sentryBowCooldown = Math.max(1, integer(values, "sentryBowCooldown"));
 		nitwitBabies = bool(values, "nitwitBabies");
 		nitwitSpawnEggs = bool(values, "nitwitSpawnEggs");
 		generateTownCenters = bool(values, "generateTownCenters");
@@ -155,6 +193,15 @@ public final class TownsfolkConfig {
 		} catch (NumberFormatException e) {
 			Townsfolk.LOGGER.warn("Setting {} in townsfolk.properties is not a whole number; using its default", key);
 			return Integer.parseInt(SETTINGS.stream().filter(s -> key.equals(s.key())).findFirst().orElseThrow().defaultValue());
+		}
+	}
+
+	private static double decimal(Properties values, String key) {
+		try {
+			return Double.parseDouble(raw(values, key));
+		} catch (NumberFormatException e) {
+			Townsfolk.LOGGER.warn("Setting {} in townsfolk.properties is not a number; using its default", key);
+			return Double.parseDouble(SETTINGS.stream().filter(s -> key.equals(s.key())).findFirst().orElseThrow().defaultValue());
 		}
 	}
 

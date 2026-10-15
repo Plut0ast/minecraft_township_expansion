@@ -120,7 +120,7 @@ SETTINGS
 --------
 The file config/townsfolk.properties is created the first time the game starts.
 Set any option to false to turn that feature off (for example dailyTradeRerolls=false).
-Every job, Sentries, repairs, food, farm chests, Town Center generation, nitwit chances
+Every job, Sentries (weapons, range, damage, cooldowns, bodyguards), repairs, food, farm chests, Town Center generation, nitwit chances
 and the reputation amounts can be changed. Use /town reload or restart to apply.
 
 

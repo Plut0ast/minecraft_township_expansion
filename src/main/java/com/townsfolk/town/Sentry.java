@@ -43,18 +43,12 @@ import org.jspecify.annotations.Nullable;
  * nitwits can be Sentries; it is their job, and disarmed they are plain nitwits again.
  */
 public final class Sentry {
-	/** How far a Sentry looks for trouble around itself (wandering) or its Hero (following). */
-	private static final double GUARD_RADIUS = 16.0;
-	private static final double BODYGUARD_RADIUS = 12.0;
+	// Guard and bodyguard radius, bow range, damage and cooldowns come from TownsfolkConfig.
 	/** Staying Sentries only hit what comes right up to them. */
 	private static final double STAY_RADIUS = 3.0;
 	private static final double REACH = 2.2;
-	private static final int ATTACK_COOLDOWN_TICKS = 20;
 	private static final int TARGET_SEARCH_INTERVAL_TICKS = 10;
 	private static final float CHASE_SPEED = 0.75F;
-	/** Archers shoot from up to this far, a little under a skeleton's range. */
-	private static final double BOW_RANGE = 14.0;
-	private static final int BOW_COOLDOWN_TICKS = 30;
 
 	private static final Map<Villager, LivingEntity> TARGETS = new WeakHashMap<>();
 	private static final Map<Villager, Long> NEXT_ATTACK = new WeakHashMap<>();
@@ -69,7 +63,9 @@ public final class Sentry {
 
 	/** A nitwit of a town holding a sword. */
 	public static boolean isSentry(Villager villager) {
-		return TownsfolkConfig.sentries && canBecomeSentry(villager) && isSentryWeapon(villager.getMainHandItem())
+		ItemStack weapon = villager.getMainHandItem();
+		boolean allowed = weapon.is(Items.BOW) ? TownsfolkConfig.archerSentries : TownsfolkConfig.swordSentries;
+		return TownsfolkConfig.sentries && allowed && canBecomeSentry(villager) && isSentryWeapon(weapon)
 			&& villager.getAttached(ModRegistry.TOWN) != null;
 	}
 
@@ -129,7 +125,7 @@ public final class Sentry {
 		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		long now = level.getGameTime();
 		if (now >= NEXT_ATTACK.getOrDefault(villager, 0L) && villager.hasLineOfSight(target)) {
-			NEXT_ATTACK.put(villager, now + ATTACK_COOLDOWN_TICKS);
+			NEXT_ATTACK.put(villager, now + TownsfolkConfig.sentrySwordCooldown);
 			attack(level, villager, target);
 		}
 		return true;
@@ -139,7 +135,7 @@ public final class Sentry {
 	private static @Nullable ServerPlayer heroOwner(Villager villager, ServerLevel level, BlockPos town) {
 		UUID ownerId = villager.getAttached(ModRegistry.COMMAND_OWNER);
 		ServerPlayer owner = ownerId == null ? null : level.getServer().getPlayerList().getPlayer(ownerId);
-		if (owner == null || owner.level() != level || owner.isSpectator()) {
+		if (!TownsfolkConfig.sentryBodyguards || owner == null || owner.level() != level || owner.isSpectator()) {
 			return null;
 		}
 		int reputation = TownReputation.get(level).get(town, owner.getUUID());
@@ -153,9 +149,9 @@ public final class Sentry {
 
 	private static double guardRadius(VillagerCommands.Command command, @Nullable ServerPlayer hero) {
 		if (hero != null) {
-			return BODYGUARD_RADIUS;
+			return TownsfolkConfig.sentryBodyguardRadius;
 		}
-		return command == VillagerCommands.Command.STAY ? STAY_RADIUS : GUARD_RADIUS;
+		return command == VillagerCommands.Command.STAY ? STAY_RADIUS : TownsfolkConfig.sentryGuardRadius;
 	}
 
 	private static @Nullable LivingEntity findTarget(ServerLevel level, Villager villager, BlockPos town, @Nullable ServerPlayer hero,
@@ -191,7 +187,7 @@ public final class Sentry {
 		if (entity instanceof Monster) {
 			return !(entity instanceof Creeper) && !(entity instanceof Enderman);
 		}
-		if (entity instanceof ServerPlayer player && !player.isCreative() && !player.isSpectator()) {
+		if (TownsfolkConfig.sentriesAttackEnemies && entity instanceof ServerPlayer player && !player.isCreative() && !player.isSpectator()) {
 			int reputation = TownReputation.get(level).get(town, player.getUUID());
 			return TownReputation.Rank.of(reputation) == TownReputation.Rank.ENEMY;
 		}
@@ -203,23 +199,28 @@ public final class Sentry {
 	 * arrows they cannot fight (a fletcher brings more).
 	 */
 	private static boolean shootAt(ServerLevel level, Villager villager, LivingEntity target, VillagerCommands.Command command) {
-		if (!hasArrows(villager)) {
+		if (TownsfolkConfig.sentriesNeedArrows && !hasArrows(villager)) {
 			return false;
 		}
+		double bowRange = TownsfolkConfig.sentryBowRange;
 		double distance = villager.distanceTo(target);
 		boolean inSight = villager.hasLineOfSight(target);
-		if ((distance > BOW_RANGE || !inSight) && command != VillagerCommands.Command.STAY) {
-			villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, CHASE_SPEED, (int) (BOW_RANGE / 2)));
+		if ((distance > bowRange || !inSight) && command != VillagerCommands.Command.STAY) {
+			villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, CHASE_SPEED, (int) (bowRange / 2)));
 			return true;
 		}
 		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		villager.getNavigation().stop();
 		long now = level.getGameTime();
-		if (inSight && distance <= BOW_RANGE && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
-			NEXT_ATTACK.put(villager, now + BOW_COOLDOWN_TICKS);
+		if (inSight && distance <= bowRange && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
+			NEXT_ATTACK.put(villager, now + TownsfolkConfig.sentryBowCooldown);
 			ItemStack bow = villager.getMainHandItem();
-			ItemStack arrowItem = takeArrow(villager);
+			ItemStack arrowItem = TownsfolkConfig.sentriesNeedArrows ? takeArrow(villager) : new ItemStack(Items.ARROW);
 			AbstractArrow arrow = ProjectileUtil.getMobArrow(villager, arrowItem, 1.0F, bow);
+			if (TownsfolkConfig.sentryDamageMultiplier != 1.0) {
+				// An arrow's base damage is 2 (Power and other enchantments still add on hit).
+				arrow.setBaseDamage(2.0 * TownsfolkConfig.sentryDamageMultiplier);
+			}
 			double xd = target.getX() - villager.getX();
 			double yd = target.getY(0.3333333333333333) - arrow.getY();
 			double zd = target.getZ() - villager.getZ();
@@ -227,7 +228,9 @@ public final class Sentry {
 			Projectile.spawnProjectileUsingShoot(arrow, level, arrowItem, xd, yd + flat * 0.2F, zd, 1.6F, 6.0F);
 			level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.ARROW_SHOOT, SoundSource.NEUTRAL,
 				1.0F, 1.0F / (villager.getRandom().nextFloat() * 0.4F + 0.8F));
-			bow.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
+			if (TownsfolkConfig.sentryWeaponsWearOut) {
+				bow.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
+			}
 		}
 		return true;
 	}
@@ -269,7 +272,8 @@ public final class Sentry {
 	private static void attack(ServerLevel level, Villager villager, LivingEntity target) {
 		ItemStack sword = villager.getMainHandItem();
 		villager.swingForAttack(InteractionHand.MAIN_HAND);
-		if (target.hurtServer(level, level.damageSources().mobAttack(villager), damageOf(sword))) {
+		float damage = (float) (damageOf(sword) * TownsfolkConfig.sentryDamageMultiplier);
+		if (target.hurtServer(level, level.damageSources().mobAttack(villager), damage) && TownsfolkConfig.sentryWeaponsWearOut) {
 			sword.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
 		}
 	}
