@@ -24,12 +24,16 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.Containers;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -56,9 +60,22 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	private String townName = "";
 	/** Game time this town was founded; newer towns win members that have no town yet. -1 until first tick. */
 	private long foundedAt = -1;
+	/** The town's banner, shown on every Town Center screen that views this town. */
+	private final SimpleContainer banner = new SimpleContainer(1) {
+		@Override
+		public void setChanged() {
+			super.setChanged();
+			TownCenterBlockEntity.this.setChanged();
+			TownCenterBlockEntity.this.syncRegistry();
+		}
+	};
 
 	public TownCenterBlockEntity(BlockPos pos, BlockState state) {
 		super(ModRegistry.TOWN_CENTER_BLOCK_ENTITY, pos, state);
+	}
+
+	public Container bannerSlot() {
+		return this.banner;
 	}
 
 	public static void serverTick(Level level, BlockPos pos, BlockState state, TownCenterBlockEntity townCenter) {
@@ -94,7 +111,8 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	/** Keeps this town's entry in the dimension's {@link TownRegistry} current, for browsing from other towns. */
 	private void syncRegistry() {
 		if (this.level instanceof ServerLevel serverLevel) {
-			TownRegistry.get(serverLevel).update(this.worldPosition, this.townName(), this.names(false), this.villagerJobs(), this.names(true));
+			TownRegistry.get(serverLevel).update(this.worldPosition, this.townName(), this.names(false), this.villagerJobs(), this.names(true),
+				this.banner.getItem(0));
 		}
 	}
 
@@ -183,6 +201,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
 		super.preRemoveSideEffects(pos, state);
 		if (this.level instanceof ServerLevel serverLevel) {
+			Containers.dropContents(serverLevel, pos, this.banner);
 			TownReputation.get(serverLevel).clear(pos);
 			TownRegistry.get(serverLevel).remove(pos);
 			AABB area = new AABB(pos).inflate(CLAIM_RADIUS * 2);
@@ -230,6 +249,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		this.townName = input.getStringOr("name", "");
 		this.residents.clear();
 		input.listOrEmpty("residents", Resident.CODEC).forEach(r -> this.residents.put(r.uuid(), r));
+		this.banner.setItem(0, input.read("banner", ItemStack.CODEC).orElse(ItemStack.EMPTY));
 	}
 
 	@Override
@@ -239,6 +259,9 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		output.putString("name", this.townName);
 		ValueOutput.TypedOutputList<Resident> list = output.list("residents", Resident.CODEC);
 		this.residents.values().forEach(list::add);
+		if (!this.banner.getItem(0).isEmpty()) {
+			output.store("banner", ItemStack.CODEC, this.banner.getItem(0));
+		}
 	}
 
 	@Override
@@ -266,12 +289,13 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 				TownRegistry.Town town = all.get(pos);
 				if (town != null) {
 					towns.add(new TownCenterMenu.TownView(pos, town.name(), town.villagers(), town.villagerJobs(), town.golems(),
-						new ArrayList<>(town.players().values()), reputation.get(pos, player.getUUID())));
+						new ArrayList<>(town.players().values()), reputation.get(pos, player.getUUID()), town.banner()));
 				}
 			}
 		}
 		if (towns.isEmpty()) {
-			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.villagerJobs(), this.names(true), List.of(), 0));
+			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.villagerJobs(), this.names(true), List.of(), 0,
+				this.banner.getItem(0)));
 		}
 		boolean canJoin = this.rankOf(player) == TownReputation.Rank.HERO && !this.isMember(player);
 		boolean canRemove = this.isTrustedBy(player) && this.isMember(player);
@@ -287,12 +311,13 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			}
 		}
 		TownCenterMenu.TownView home = towns.getFirst();
-		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, villagerJobs, home.golems(), home.players(), home.reputation()));
+		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, villagerJobs, home.golems(), home.players(), home.reputation(),
+			this.banner.getItem(0)));
 		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin, canRemove, villagerIds);
 	}
 
 	@Override
 	public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
-		return new TownCenterMenu(containerId, inventory, this.menuData(player));
+		return new TownCenterMenu(containerId, inventory, this.menuData(player), this.banner);
 	}
 }

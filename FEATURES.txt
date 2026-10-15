@@ -24,6 +24,10 @@ Town Center recipe:
     [Diamond] [ Planks  ] [Diamond]
     [Planks ] [ Planks  ] [Planks ]
 
+Town banners:
+Trusted players can put a banner in the slot next to the town's name. Everyone browsing
+towns sees a small version of it on that town's page. Breaking the Town Center drops it.
+
 The Town Center screen shows:
 - Your rank with the town, with a progress bar showing how far you are from the next rank.
 - Everyone who lives there, listed as Players, Villagers (with their jobs) and Golems.

@@ -17,6 +17,8 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -27,13 +29,15 @@ import org.jspecify.annotations.Nullable;
 public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	private static final int ROW_HEIGHT = 12;
 	private static final int LIST_X = 8;
-	private static final int LIST_Y = 52;
+	private static final int LIST_Y = 54;
 	private static final int LIST_W = 160;
-	private static final int LIST_H = 104;
-	private static final int RANK_Y = 20;
-	private static final int BAR_Y = 31;
-	private static final int NEXT_RANK_Y = 39;
-	private static final int NAV_Y = 162;
+	private static final int LIST_H = 52;
+	private static final int RANK_Y = 23;
+	private static final int BAR_Y = 34;
+	private static final int NEXT_RANK_Y = 42;
+	private static final int NAV_Y = 110;
+	/** The name sits right of the banner slot. */
+	private static final int NAME_X = 28;
 
 	private static final int HEADER_COLOR = 0xFF404040;
 	private static final int NAME_COLOR = 0xFFFFFFFF;
@@ -64,7 +68,9 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	private Button joinButton;
 
 	public TownCenterScreen(TownCenterMenu menu, Inventory inventory, Component title) {
-		super(menu, inventory, title, 176, 186);
+		super(menu, inventory, title, 176, TownCenterMenu.INVENTORY_Y + 83);
+		this.titleLabelX = NAME_X;
+		this.inventoryLabelY = TownCenterMenu.INVENTORY_Y - 11;
 	}
 
 	private List<TownCenterMenu.TownView> visibleTowns() {
@@ -138,7 +144,7 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		int x = this.leftPos;
 		int y = this.topPos;
 
-		this.nameBox = new EditBox(this.font, x + 8, y + 5, 112, 12, Component.translatable("gui.townsfolk.town_center.name"));
+		this.nameBox = new EditBox(this.font, x + NAME_X, y + 5, 92, 12, Component.translatable("gui.townsfolk.town_center.name"));
 		this.nameBox.setMaxLength(TownNames.MAX_LENGTH);
 		this.nameBox.setResponder(value -> this.updateSaveButton());
 		this.addRenderableWidget(this.nameBox);
@@ -170,6 +176,8 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		TownCenterMenu.TownView town = this.current();
 		boolean home = this.viewingHome();
 		this.scroll = 0;
+		// The real banner slot belongs to the opened town; other towns show their banner as a picture.
+		this.menu.setShowingHome(home);
 
 		// Only players allowed to rename see the name box; everyone else sees a plain title.
 		boolean renaming = this.canRenameHere();
@@ -274,10 +282,16 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		int y = this.topPos;
 		Panels.window(graphics, x, y, this.imageWidth, this.imageHeight);
 		Panels.inset(graphics, x + LIST_X, y + LIST_Y, LIST_W, LIST_H, Panels.SUNKEN_FILL);
+		for (Slot slot : this.menu.slots) {
+			Panels.slot(graphics, x + slot.x - 1, y + slot.y - 1);
+		}
 
 		TownCenterMenu.TownView town = this.current();
 		if (town != null) {
 			this.extractReputationBar(graphics, town.reputation(), x + LIST_X, y + BAR_Y);
+			if (!this.viewingHome() && !town.banner().isEmpty()) {
+				graphics.item(town.banner(), x + TownCenterMenu.BANNER_X, y + TownCenterMenu.BANNER_Y);
+			}
 		}
 
 		List<Row> rows = this.rows();
@@ -361,6 +375,29 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			? Component.translatable("gui.townsfolk.town_center.max_rank")
 			: Component.translatable("gui.townsfolk.town_center.next_rank", next.threshold - reputation, next.displayName());
 		graphics.text(this.font, toNext, LIST_X, NEXT_RANK_Y, Panels.TEXT_LIGHT, false);
+		graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, Panels.TEXT, false);
+	}
+
+	/** Below Trusted the opened town's banner can be looked at but not changed, so its slot is shaded. */
+	@Override
+	public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		super.extractContents(graphics, mouseX, mouseY, a);
+		if (this.viewingHome() && !this.menu.canRename()) {
+			int sx = this.leftPos + TownCenterMenu.BANNER_X;
+			int sy = this.topPos + TownCenterMenu.BANNER_Y;
+			graphics.fill(sx, sy, sx + 16, sy + 16, 0xB0202020);
+		}
+	}
+
+	/** Another town's banner, when the mouse is over it. */
+	private ItemStack hoveredOtherBanner(int mouseX, int mouseY) {
+		TownCenterMenu.TownView town = this.current();
+		if (town == null || this.viewingHome()) {
+			return ItemStack.EMPTY;
+		}
+		int lx = mouseX - this.leftPos - TownCenterMenu.BANNER_X;
+		int ly = mouseY - this.topPos - TownCenterMenu.BANNER_Y;
+		return lx >= 0 && lx < 16 && ly >= 0 && ly < 16 ? town.banner() : ItemStack.EMPTY;
 	}
 
 	/** The list row whose remove mark is under the mouse, or -1. */
@@ -393,6 +430,10 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		super.extractTooltip(graphics, mouseX, mouseY);
 		if (this.removeRowAt(mouseX, mouseY) >= 0) {
 			graphics.setTooltipForNextFrame(this.font, Component.translatable("gui.townsfolk.town_center.remove"), mouseX, mouseY);
+		}
+		ItemStack banner = this.hoveredOtherBanner(mouseX, mouseY);
+		if (!banner.isEmpty()) {
+			graphics.setTooltipForNextFrame(this.font, banner, mouseX, mouseY);
 		}
 	}
 
