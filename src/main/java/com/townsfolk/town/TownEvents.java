@@ -163,7 +163,8 @@ public final class TownEvents {
 			townName,
 			canTrade(villager),
 			VillagerCommands.canCommand(player, villager),
-			VillagerCommands.canEditGear(player, villager)
+			VillagerCommands.canEditGear(player, villager),
+			TownExile.canRemove(player, villager)
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

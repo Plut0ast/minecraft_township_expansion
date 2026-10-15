@@ -86,10 +86,13 @@ public final class TownCenters {
 		return level.isLoaded(pos) && !(level.getBlockEntity(pos) instanceof TownCenterBlockEntity);
 	}
 
-	/** The town a villager without a town at {@code pos} should join: the newest one in range, nearest on ties. */
-	public static @Nullable BlockPos townFor(ServerLevel level, BlockPos pos) {
+	/**
+	 * The town a member without a town at {@code pos} should join: the newest one in range, nearest on
+	 * ties, never {@code barred} (the town a removed villager may not rejoin yet).
+	 */
+	public static @Nullable BlockPos townFor(ServerLevel level, BlockPos pos, @Nullable BlockPos barred) {
 		TownCenterBlockEntity best = null;
-		for (TownCenterBlockEntity town : townsNear(level, pos, null)) {
+		for (TownCenterBlockEntity town : townsNear(level, pos, barred)) {
 			if (best == null
 				|| town.foundedAt() > best.foundedAt()
 				|| town.foundedAt() == best.foundedAt() && town.getBlockPos().distSqr(pos) < best.getBlockPos().distSqr(pos)) {

@@ -5,6 +5,7 @@ import com.townsfolk.block.TownCenterBlock;
 import com.townsfolk.block.TownCenterBlockEntity;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.menu.VillagerMenu;
+import com.townsfolk.town.TownExile;
 import com.townsfolk.town.VillagerCommands;
 import java.util.Set;
 import java.util.UUID;
@@ -92,6 +93,11 @@ public final class ModRegistry {
 	public static final AttachmentType<Long> ARRIVAL_DEADLINE = AttachmentRegistry.<Long>builder()
 		.persistent(Codec.LONG)
 		.buildAndRegister(Townsfolk.id("arrival_deadline"));
+
+	/** Set on a villager removed from its town: which town, until when it is barred, and where it is heading. */
+	public static final AttachmentType<TownExile.Exile> EXILE = AttachmentRegistry.<TownExile.Exile>builder()
+		.persistent(TownExile.Exile.CODEC)
+		.buildAndRegister(Townsfolk.id("exile"));
 
 	private ModRegistry() {
 	}

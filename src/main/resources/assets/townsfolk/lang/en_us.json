@@ -39,5 +39,7 @@
   "gui.townsfolk.town_center.rename_elsewhere": "Visit this town's Town Center to rename it",
   "gui.townsfolk.town_center.no_player_towns": "No towns with players",
   "gui.townsfolk.town_center.here": "This town",
-  "gui.townsfolk.town_center.distance": "%s blocks away"
+  "gui.townsfolk.town_center.distance": "%s blocks away",
+  "gui.townsfolk.villager.remove": "Remove from this town. They will look for a new town, and may rejoin this one after a while.",
+  "gui.townsfolk.villager.remove_locked": "Be a Trusted member of this town to remove villagers"
 }

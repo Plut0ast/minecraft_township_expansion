@@ -6,6 +6,7 @@ import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownCenters;
+import com.townsfolk.town.TownExile;
 import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownRegistry;
 import com.townsfolk.town.TownReputation;
@@ -149,8 +150,10 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 				member.removeAttached(ModRegistry.TOWN);
 				town = null;
 			}
-			if (town == null && this.worldPosition.equals(TownCenters.townFor(serverLevel, member.blockPosition()))) {
+			BlockPos barred = member instanceof Villager villager ? TownExile.barredTown(villager, serverLevel) : null;
+			if (town == null && this.worldPosition.equals(TownCenters.townFor(serverLevel, member.blockPosition(), barred))) {
 				member.setAttached(ModRegistry.TOWN, this.worldPosition);
+				member.removeAttached(ModRegistry.EXILE);
 				if (member instanceof Villager villager) {
 					TownArrival.start(villager, serverLevel);
 				}
