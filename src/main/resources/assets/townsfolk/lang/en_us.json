@@ -6,8 +6,6 @@
   "gui.townsfolk.villager.hand": "Hand",
   "gui.townsfolk.villager.trade": "Trade",
   "gui.townsfolk.villager.no_trades": "This villager has nothing to trade",
-  "message.townsfolk.town_center.no_town_nearby": "No other town within %s blocks. This Town Center starts a new town.",
-  "message.townsfolk.town_center.town_nearby": "Nearest town: %s, %s blocks away at %s, %s, %s (%s villagers). Villagers here without a town will join this new town instead; that town keeps its current villagers.",
   "gui.townsfolk.town_center.reputation": "Reputation: %s (%s)",
   "gui.townsfolk.town_center.next_rank": "%s to %s",
   "gui.townsfolk.town_center.max_rank": "Highest rank",
@@ -25,9 +23,10 @@
   "gui.townsfolk.town_center.name": "Town name",
   "gui.townsfolk.town_center.rename": "Rename",
   "gui.townsfolk.town_center.rename_locked": "Reach Trusted with this town to rename it",
-  "message.townsfolk.town_center.founded": "Founded the town of %s.",
   "gui.townsfolk.villager.town": "⌂ %s",
   "gui.townsfolk.villager.no_town": "No town",
   "gui.townsfolk.villager.unemployed": "Unemployed",
-  "gui.townsfolk.villager.child": "Child"
+  "gui.townsfolk.villager.child": "Child",
+  "message.townsfolk.town_center.founded_alone": "Founded %s · No other town nearby",
+  "message.townsfolk.town_center.founded_near": "Founded %s · Nearest town: %s, %s blocks away"
 }

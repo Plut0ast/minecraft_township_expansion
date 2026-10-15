@@ -41,18 +41,17 @@ public class TownCenterBlock extends BaseEntityBlock {
 			return;
 		}
 
+		// Shown above the hotbar rather than in chat.
 		String founded = level.getBlockEntity(pos) instanceof TownCenterBlockEntity town ? town.townName() : "";
-		player.sendSystemMessage(Component.translatable("message.townsfolk.town_center.founded", founded));
-
 		TownCenterBlockEntity nearest = TownCenters.nearestOtherTown(serverLevel, pos);
+		Component message;
 		if (nearest == null) {
-			player.sendSystemMessage(Component.translatable("message.townsfolk.town_center.no_town_nearby", TownCenterBlockEntity.CLAIM_RADIUS));
+			message = Component.translatable("message.townsfolk.town_center.founded_alone", founded);
 		} else {
-			BlockPos other = nearest.getBlockPos();
-			int distance = (int) Math.round(Math.sqrt(other.distSqr(pos)));
-			player.sendSystemMessage(Component.translatable("message.townsfolk.town_center.town_nearby",
-				nearest.townName(), distance, other.getX(), other.getY(), other.getZ(), nearest.population()));
+			int distance = (int) Math.round(Math.sqrt(nearest.getBlockPos().distSqr(pos)));
+			message = Component.translatable("message.townsfolk.town_center.founded_near", founded, nearest.townName(), distance);
 		}
+		player.sendSystemMessage(message, true);
 	}
 
 	@Override
