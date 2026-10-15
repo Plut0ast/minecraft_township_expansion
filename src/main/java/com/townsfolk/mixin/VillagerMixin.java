@@ -31,8 +31,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(Villager.class)
 public abstract class VillagerMixin {
-	/** Chance a baby is a nitwit, by how many of its parents are nitwits (0, 1 or 2). */
-	private static final float[] NITWIT_BABY_CHANCE = {0.2F, 0.7F, 1.0F};
+	/** Chance a baby is a nitwit, by how many of its parents are nitwits (0, 1 or 2): a nitwit parent is needed. */
+	private static final float[] NITWIT_BABY_CHANCE = {0.0F, 0.5F, 1.0F};
+	/** Chance a villager from a spawn egg is a nitwit. */
+	private static final float NITWIT_EGG_CHANCE = 0.2F;
 
 	@Inject(method = "getBreedOffspring(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/AgeableMob;)Lnet/minecraft/world/entity/npc/villager/Villager;",
 		at = @At("RETURN"))
@@ -55,7 +57,7 @@ public abstract class VillagerMixin {
 		boolean fromEgg = TownsfolkConfig.nitwitSpawnEggs
 			&& (spawnReason == EntitySpawnReason.SPAWN_ITEM_USE || spawnReason == EntitySpawnReason.DISPENSER);
 		if (fromEgg && villager.getVillagerData().profession().is(VillagerProfession.NONE)
-			&& villager.getRandom().nextFloat() < NITWIT_BABY_CHANCE[0]) {
+			&& villager.getRandom().nextFloat() < NITWIT_EGG_CHANCE) {
 			villager.setVillagerData(villager.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.NITWIT));
 		}
 	}

@@ -81,7 +81,7 @@ public final class TownsfolkConfig {
 		section("Villagers");
 		add("villagerFood", "true", "Villagers have food, eat to heal, start with bread and fetch food from farmers and butchers.");
 		add("arrivalWalk", "true", "Villagers walk to the Town Center and celebrate when they join a town.");
-		add("nitwitBabies", "true", "Babies can be born nitwits (20% / 70% / 100% by nitwit parents).");
+		add("nitwitBabies", "true", "Babies can be born nitwits if a parent is one (50% with one nitwit parent, 100% with two).");
 		add("nitwitSpawnEggs", "true", "Villagers from spawn eggs have a 20% chance to be nitwits.");
 		section("Sentries");
 		add("sentries", "true", "Master switch: nitwits armed with a sword or bow become Sentries.");

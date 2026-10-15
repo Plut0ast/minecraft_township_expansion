@@ -98,8 +98,8 @@ NITWITS, SENTRIES & GOLEMS
   Sentries fight hostile mobs in their town and attack the town's Enemies. Archers shoot
   arrows from their pockets.
 - A Sentry that follows a Hero becomes that Hero's bodyguard.
-- Babies are more likely to be nitwits if a parent is one: 20% with no nitwit parents,
-  70% with one, 100% with two. Spawn eggs give a nitwit 20% of the time.
+- Nitwit babies need a nitwit parent: 50% with one nitwit parent, 100% with two. Two
+  normal villagers never have a nitwit. Spawn eggs give a nitwit 20% of the time.
 - Iron golems get names like Rivet-42, join towns, and go after the town's Enemies.
 
 
