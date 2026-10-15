@@ -24,6 +24,13 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -44,6 +51,9 @@ public final class Sentry {
 	private static final int ATTACK_COOLDOWN_TICKS = 20;
 	private static final int TARGET_SEARCH_INTERVAL_TICKS = 10;
 	private static final float CHASE_SPEED = 0.75F;
+	/** Archers shoot from up to this far, a little under a skeleton's range. */
+	private static final double BOW_RANGE = 14.0;
+	private static final int BOW_COOLDOWN_TICKS = 30;
 
 	private static final Map<Villager, LivingEntity> TARGETS = new WeakHashMap<>();
 	private static final Map<Villager, Long> NEXT_ATTACK = new WeakHashMap<>();
@@ -58,7 +68,16 @@ public final class Sentry {
 
 	/** A nitwit of a town holding a sword. */
 	public static boolean isSentry(Villager villager) {
-		return canBecomeSentry(villager) && villager.getMainHandItem().is(ItemTags.SWORDS) && villager.getAttached(ModRegistry.TOWN) != null;
+		return canBecomeSentry(villager) && isSentryWeapon(villager.getMainHandItem()) && villager.getAttached(ModRegistry.TOWN) != null;
+	}
+
+	/** Swords for close fighting, bows for shooting arrows from the Sentry's pockets. */
+	public static boolean isSentryWeapon(ItemStack stack) {
+		return stack.is(ItemTags.SWORDS) || stack.is(Items.BOW);
+	}
+
+	public static boolean isArcher(Villager villager) {
+		return villager.getMainHandItem().is(Items.BOW);
 	}
 
 	/**
@@ -95,6 +114,9 @@ public final class Sentry {
 		}
 
 		villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(target, true));
+		if (isArcher(villager)) {
+			return shootAt(level, villager, target, command);
+		}
 		if (villager.distanceTo(target) > REACH) {
 			if (command != VillagerCommands.Command.STAY) {
 				villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, CHASE_SPEED, 1));
@@ -172,6 +194,74 @@ public final class Sentry {
 			return TownReputation.Rank.of(reputation) == TownReputation.Rank.ENEMY;
 		}
 		return false;
+	}
+
+	/**
+	 * Archers close in to bow range and shoot arrows from their pockets, like a skeleton. Without
+	 * arrows they cannot fight (a fletcher brings more).
+	 */
+	private static boolean shootAt(ServerLevel level, Villager villager, LivingEntity target, VillagerCommands.Command command) {
+		if (!hasArrows(villager)) {
+			return false;
+		}
+		double distance = villager.distanceTo(target);
+		boolean inSight = villager.hasLineOfSight(target);
+		if ((distance > BOW_RANGE || !inSight) && command != VillagerCommands.Command.STAY) {
+			villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, CHASE_SPEED, (int) (BOW_RANGE / 2)));
+			return true;
+		}
+		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+		villager.getNavigation().stop();
+		long now = level.getGameTime();
+		if (inSight && distance <= BOW_RANGE && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
+			NEXT_ATTACK.put(villager, now + BOW_COOLDOWN_TICKS);
+			ItemStack bow = villager.getMainHandItem();
+			ItemStack arrowItem = takeArrow(villager);
+			AbstractArrow arrow = ProjectileUtil.getMobArrow(villager, arrowItem, 1.0F, bow);
+			double xd = target.getX() - villager.getX();
+			double yd = target.getY(0.3333333333333333) - arrow.getY();
+			double zd = target.getZ() - villager.getZ();
+			double flat = Math.sqrt(xd * xd + zd * zd);
+			Projectile.spawnProjectileUsingShoot(arrow, level, arrowItem, xd, yd + flat * 0.2F, zd, 1.6F, 6.0F);
+			level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.ARROW_SHOOT, SoundSource.NEUTRAL,
+				1.0F, 1.0F / (villager.getRandom().nextFloat() * 0.4F + 0.8F));
+			bow.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
+		}
+		return true;
+	}
+
+	public static boolean hasArrows(Villager villager) {
+		SimpleContainer pockets = villager.getInventory();
+		for (int i = 0; i < pockets.getContainerSize(); i++) {
+			if (pockets.getItem(i).is(ItemTags.ARROWS)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static int arrowCount(Villager villager) {
+		int count = 0;
+		SimpleContainer pockets = villager.getInventory();
+		for (int i = 0; i < pockets.getContainerSize(); i++) {
+			if (pockets.getItem(i).is(ItemTags.ARROWS)) {
+				count += pockets.getItem(i).getCount();
+			}
+		}
+		return count;
+	}
+
+	private static ItemStack takeArrow(Villager villager) {
+		SimpleContainer pockets = villager.getInventory();
+		for (int i = 0; i < pockets.getContainerSize(); i++) {
+			ItemStack stack = pockets.getItem(i);
+			if (stack.is(ItemTags.ARROWS)) {
+				ItemStack one = stack.split(1);
+				pockets.setChanged();
+				return one;
+			}
+		}
+		return new ItemStack(Items.ARROW);
 	}
 
 	private static void attack(ServerLevel level, Villager villager, LivingEntity target) {

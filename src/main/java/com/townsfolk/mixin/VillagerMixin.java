@@ -1,9 +1,12 @@
 package com.townsfolk.mixin;
 
+import com.townsfolk.town.RepairPayloads;
 import com.townsfolk.town.Sentry;
 import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownExile;
 import com.townsfolk.town.VillagerFood;
+import com.townsfolk.town.VillagerStanding;
+import com.townsfolk.work.VillagerWork;
 import com.townsfolk.town.VillagerCommands;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.DifficultyInstance;
@@ -13,6 +16,7 @@ import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.level.ServerLevelAccessor;
 import org.jspecify.annotations.Nullable;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -54,6 +58,15 @@ public abstract class VillagerMixin {
 		}
 	}
 
+	/**
+	 * Tells the player's game whether this trader repairs, for the Repair button on its trade screen.
+	 * Sent before the trade screen opens so the button is there from the start.
+	 */
+	@Inject(method = "startTrading", at = @At("HEAD"))
+	private void townsfolk$offerRepairs(Player player, CallbackInfo ci) {
+		RepairPayloads.onStartTrading((Villager) (Object) this, player);
+	}
+
 	private static boolean isNitwit(Villager villager) {
 		return villager.getVillagerData().profession().is(VillagerProfession.NITWIT);
 	}
@@ -68,5 +81,7 @@ public abstract class VillagerMixin {
 		TownArrival.afterBrainTick(villager, level);
 		TownExile.afterBrainTick(villager, level);
 		VillagerFood.afterBrainTick(villager, level);
+		VillagerWork.afterBrainTick(villager, level);
+		VillagerStanding.tick(villager, level);
 	}
 }

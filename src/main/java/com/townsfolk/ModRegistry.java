@@ -3,10 +3,14 @@ package com.townsfolk;
 import com.mojang.serialization.Codec;
 import com.townsfolk.block.TownCenterBlock;
 import com.townsfolk.block.TownCenterBlockEntity;
+import com.townsfolk.menu.RepairMenu;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.menu.VillagerMenu;
 import com.townsfolk.town.TownExile;
 import com.townsfolk.town.VillagerCommands;
+import com.townsfolk.work.ShepherdWork;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
@@ -69,6 +73,12 @@ public final class ModRegistry {
 		new ExtendedMenuType<>(VillagerMenu::new, VillagerMenu.Data.STREAM_CODEC)
 	);
 
+	public static final ExtendedMenuType<RepairMenu, RepairMenu.Data> REPAIR_MENU = Registry.register(
+		BuiltInRegistries.MENU,
+		Townsfolk.id("repair"),
+		new ExtendedMenuType<>(RepairMenu::new, RepairMenu.Data.STREAM_CODEC)
+	);
+
 	/** Position of the Town Center this villager or iron golem belongs to. Cleared only if that Town Center is broken. */
 	public static final AttachmentType<BlockPos> TOWN = AttachmentRegistry.<BlockPos>builder()
 		.persistent(BlockPos.CODEC)
@@ -114,6 +124,31 @@ public final class ModRegistry {
 	public static final AttachmentType<Boolean> STARTING_FOOD_GIVEN = AttachmentRegistry.<Boolean>builder()
 		.persistent(Codec.BOOL)
 		.buildAndRegister(Townsfolk.id("starting_food_given"));
+
+	/** A shepherd's pen (where to stand to shear, and its chest), set up the first time it works. */
+	public static final AttachmentType<ShepherdWork.Pen> SHEPHERD_PEN = AttachmentRegistry.<ShepherdWork.Pen>builder()
+		.persistent(ShepherdWork.Pen.CODEC)
+		.buildAndRegister(Townsfolk.id("shepherd_pen"));
+
+	/** On a sheep: the shepherd it belongs to. */
+	public static final AttachmentType<UUID> FLOCK_OWNER = AttachmentRegistry.<UUID>builder()
+		.persistent(UUIDUtil.CODEC)
+		.buildAndRegister(Townsfolk.id("flock_owner"));
+
+	/** Each player's standing (trading xp) with this villager. */
+	public static final AttachmentType<Map<UUID, Integer>> STANDING = AttachmentRegistry.<Map<UUID, Integer>>builder()
+		.persistent(Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT))
+		.buildAndRegister(Townsfolk.id("standing"));
+
+	/** The level (1-5) each of the villager's current offers unlocks at, in offer order. */
+	public static final AttachmentType<List<Integer>> OFFER_TIERS = AttachmentRegistry.<List<Integer>>builder()
+		.persistent(Codec.INT.listOf())
+		.buildAndRegister(Townsfolk.id("offer_tiers"));
+
+	/** The Minecraft day the villager last rerolled its trades. */
+	public static final AttachmentType<Long> LAST_ROLL_DAY = AttachmentRegistry.<Long>builder()
+		.persistent(Codec.LONG)
+		.buildAndRegister(Townsfolk.id("last_roll_day"));
 
 	private ModRegistry() {
 	}

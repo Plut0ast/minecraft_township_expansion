@@ -32,7 +32,7 @@ public final class HeldWeapons {
 
 	public static boolean isWeapon(ItemStack stack) {
 		return stack.is(ItemTags.SWORDS) || stack.is(ItemTags.AXES) || stack.is(ItemTags.SPEARS)
-			|| stack.is(Items.TRIDENT) || stack.is(Items.MACE);
+			|| stack.is(Items.TRIDENT) || stack.is(Items.MACE) || stack.is(Items.BOW) || stack.is(Items.CROSSBOW);
 	}
 
 	/** Called while the villager's render state is extracted: marks weapons for the held pose. */

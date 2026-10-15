@@ -3,9 +3,11 @@
   "package": "com.townsfolk.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "AbstractVillagerInvoker",
     "AbstractVillagerMixin",
     "LivingEntityMixin",
-    "VillagerMixin"
+    "VillagerMixin",
+    "VillagerTradeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

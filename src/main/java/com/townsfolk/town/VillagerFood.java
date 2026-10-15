@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Each villager's food slot. A hurt villager eats from it to heal (vanilla villagers never heal on
  * their own). Players who are not Enemies can fill it; when it runs low the villager fetches food from
- * a farmer of its town, and farmers top up from their own harvest. Every villager starts with bread.
+ * a farmer or butcher of its town, and farmers top up from their own harvest. Every villager starts with bread.
  */
 public final class VillagerFood {
 	/** Eat one item this often while hurt. */
@@ -48,6 +48,11 @@ public final class VillagerFood {
 	private static final Map<Villager, Trip> TRIPS = new WeakHashMap<>();
 
 	private VillagerFood() {
+	}
+
+	/** True while the villager is on its way to a farmer (or butcher) for food. */
+	public static boolean isFetchingFood(Villager villager) {
+		return TRIPS.containsKey(villager);
 	}
 
 	public static boolean isFood(ItemStack stack) {
@@ -161,7 +166,7 @@ public final class VillagerFood {
 		AABB area = villager.getBoundingBox().inflate(FARMER_SEARCH_RADIUS);
 		Villager best = null;
 		double bestDist = Double.MAX_VALUE;
-		for (Villager other : level.getEntitiesOfClass(Villager.class, area, v -> v != villager && v.isAlive() && FarmWork.isFarmer(v))) {
+		for (Villager other : level.getEntitiesOfClass(Villager.class, area, v -> v != villager && v.isAlive() && isFoodSupplier(v))) {
 			if (town != null && !town.equals(other.getAttached(ModRegistry.TOWN))) {
 				continue;
 			}
@@ -172,6 +177,11 @@ public final class VillagerFood {
 			}
 		}
 		return best;
+	}
+
+	/** Farmers grow food and butchers cook it; both share what they carry. */
+	private static boolean isFoodSupplier(Villager villager) {
+		return FarmWork.isFarmer(villager) || villager.getVillagerData().profession().is(net.minecraft.world.entity.npc.villager.VillagerProfession.BUTCHER);
 	}
 
 	/** Food a farmer is carrying in its hand or pockets (not its own food slot). */

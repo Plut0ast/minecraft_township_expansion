@@ -1,6 +1,7 @@
 package com.townsfolk.menu;
 
 import com.townsfolk.ModRegistry;
+import com.townsfolk.town.Sentry;
 import com.townsfolk.town.VillagerCommands;
 import com.townsfolk.town.VillagerFood;
 import java.util.Map;
@@ -359,7 +360,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 
 		@Override
 		public boolean mayPlace(ItemStack stack) {
-			if (stack.is(ItemTags.SWORDS) && !this.canArm) {
+			if (Sentry.isSentryWeapon(stack) && !this.canArm) {
 				return false;
 			}
 			return this.editable && this.equipment.villager().getMainHandItem().isEmpty();

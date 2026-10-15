@@ -50,5 +50,12 @@
   "gui.townsfolk.villager.command.farm": "Farming",
   "gui.townsfolk.villager.sentry": "Sentry",
   "gui.townsfolk.villager.name": "Villager name",
-  "gui.townsfolk.villager.rename": "Type a new name and press Enter"
+  "gui.townsfolk.villager.rename": "Type a new name and press Enter",
+  "gui.townsfolk.repair.button": "Repair",
+  "gui.townsfolk.repair.title": "Repairs: %s",
+  "gui.townsfolk.repair.cost": "Cost: %s emeralds",
+  "gui.townsfolk.repair.hint.armor": "Any damaged armour",
+  "gui.townsfolk.repair.hint.leather": "Damaged leather armour",
+  "gui.townsfolk.repair.hint.weapon": "Any damaged weapon",
+  "gui.townsfolk.repair.hint.tool": "Any damaged tool"
 }
