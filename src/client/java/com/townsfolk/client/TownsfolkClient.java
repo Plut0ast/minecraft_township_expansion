@@ -6,7 +6,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegist
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.model.npc.VillagerModel;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.VillagerRenderState;
+import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.world.entity.EntityTypes;
 
 public class TownsfolkClient implements ClientModInitializer {
@@ -21,6 +23,12 @@ public class TownsfolkClient implements ClientModInitializer {
 		LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
 			if (entityType == EntityTypes.VILLAGER || entityType == EntityTypes.WANDERING_TRADER) {
 				helper.register(new VillagerArmorLayer((RenderLayerParent<VillagerRenderState, VillagerModel>) renderer, context));
+			}
+			if (entityType == EntityTypes.VILLAGER) {
+				helper.register(new VillagerBannerCapeLayer((RenderLayerParent<VillagerRenderState, VillagerModel>) renderer, context));
+			}
+			if (entityType == EntityTypes.PLAYER) {
+				helper.register(new PlayerBannerCapeLayer((RenderLayerParent<AvatarRenderState, PlayerModel>) renderer, context));
 			}
 		});
 	}

@@ -37,7 +37,7 @@ public record RenameVillagerPayload(int containerId, String name) implements Cus
 			|| menu.containerId != payload.containerId()
 			|| !menu.stillValid(player)
 			|| !(menu.villager() instanceof AbstractVillager villager)
-			|| !VillagerCommands.canEditGear(player, villager)) {
+			|| !VillagerCommands.canRename(player, villager)) {
 			return;
 		}
 		String name = TownNames.clean(payload.name());

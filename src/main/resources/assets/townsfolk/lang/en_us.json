@@ -58,5 +58,9 @@
   "gui.townsfolk.repair.hint.leather": "Damaged leather armour",
   "gui.townsfolk.repair.hint.weapon": "Any damaged weapon",
   "gui.townsfolk.repair.hint.tool": "Any damaged tool",
-  "commands.townsfolk.reload": "Reloaded settings from %s"
+  "commands.townsfolk.reload": "Reloaded settings from %s",
+  "gui.townsfolk.town_center.join_leaves": "Join this town as one of its players. You can only be in one town, so you will leave %s.",
+  "message.townsfolk.town_center.founded_left": "%s · Left %s",
+  "gui.townsfolk.town_center.move_title": "Are you sure you want to change towns?",
+  "gui.townsfolk.town_center.move_message": "You can only be in one town. Joining will make you leave %s and join %s."
 }

@@ -18,6 +18,6 @@ public abstract class WanderingTraderRendererMixin {
 	)
 	private void townsfolk$extractArmor(WanderingTrader trader, VillagerRenderState state, float partialTicks, CallbackInfo ci) {
 		VillagerArmorLayer.extract(trader, state);
-		HeldWeapons.extract(trader, state);
+		HeldWeapons.extract(trader, state, partialTicks);
 	}
 }

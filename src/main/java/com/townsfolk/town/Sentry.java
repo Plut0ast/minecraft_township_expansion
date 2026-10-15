@@ -49,6 +49,8 @@ public final class Sentry {
 	private static final double REACH = 2.2;
 	private static final int TARGET_SEARCH_INTERVAL_TICKS = 10;
 	private static final float CHASE_SPEED = 0.75F;
+	/** Archers draw for this long before loosing, like a skeleton (shorter if the bow cooldown is shorter). */
+	private static final int BOW_DRAW_TICKS = 20;
 
 	private static final Map<Villager, LivingEntity> TARGETS = new WeakHashMap<>();
 	private static final Map<Villager, Long> NEXT_ATTACK = new WeakHashMap<>();
@@ -63,7 +65,8 @@ public final class Sentry {
 
 	/** A nitwit of a town holding a sword. */
 	public static boolean isSentry(Villager villager) {
-		ItemStack weapon = villager.getMainHandItem();
+		// A Sentry stays one while it eats, with its weapon put away.
+		ItemStack weapon = VillagerFood.heldOutsideMeals(villager);
 		boolean allowed = weapon.is(Items.BOW) ? TownsfolkConfig.archerSentries : TownsfolkConfig.swordSentries;
 		return TownsfolkConfig.sentries && allowed && canBecomeSentry(villager) && isSentryWeapon(weapon)
 			&& villager.getAttached(ModRegistry.TOWN) != null;
@@ -83,12 +86,9 @@ public final class Sentry {
 	 * other movement (following, walking to town) waits until the fight is over.
 	 */
 	public static boolean afterBrainTick(Villager villager, ServerLevel level) {
-		if (!isSentry(villager)) {
+		if (!isSentry(villager) || villager.isSleeping() || VillagerFood.isEating(villager)) {
 			TARGETS.remove(villager);
-			return false;
-		}
-		if (villager.isSleeping()) {
-			TARGETS.remove(villager);
+			lowerBow(villager);
 			return false;
 		}
 
@@ -108,6 +108,7 @@ public final class Sentry {
 			}
 		}
 		if (target == null) {
+			lowerBow(villager);
 			return false;
 		}
 
@@ -200,11 +201,15 @@ public final class Sentry {
 	 */
 	private static boolean shootAt(ServerLevel level, Villager villager, LivingEntity target, VillagerCommands.Command command) {
 		if (TownsfolkConfig.sentriesNeedArrows && !hasArrows(villager)) {
+			lowerBow(villager);
 			return false;
 		}
 		double bowRange = TownsfolkConfig.sentryBowRange;
 		double distance = villager.distanceTo(target);
 		boolean inSight = villager.hasLineOfSight(target);
+		if (distance > bowRange || !inSight) {
+			lowerBow(villager);
+		}
 		if ((distance > bowRange || !inSight) && command != VillagerCommands.Command.STAY) {
 			villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, CHASE_SPEED, (int) (bowRange / 2)));
 			return true;
@@ -212,8 +217,14 @@ public final class Sentry {
 		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		villager.getNavigation().stop();
 		long now = level.getGameTime();
-		if (inSight && distance <= bowRange && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
-			NEXT_ATTACK.put(villager, now + TownsfolkConfig.sentryBowCooldown);
+		int drawTicks = Math.min(BOW_DRAW_TICKS, TownsfolkConfig.sentryBowCooldown);
+		if (inSight && distance <= bowRange && !villager.isUsingItem() && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
+			// Start drawing; the arrow flies once the bow is fully drawn.
+			villager.startUsingItem(InteractionHand.MAIN_HAND);
+		}
+		if (inSight && distance <= bowRange && villager.isUsingItem() && villager.getTicksUsingItem() >= drawTicks) {
+			villager.stopUsingItem();
+			NEXT_ATTACK.put(villager, now + Math.max(0, TownsfolkConfig.sentryBowCooldown - drawTicks));
 			ItemStack bow = villager.getMainHandItem();
 			ItemStack arrowItem = TownsfolkConfig.sentriesNeedArrows ? takeArrow(villager) : new ItemStack(Items.ARROW);
 			AbstractArrow arrow = ProjectileUtil.getMobArrow(villager, arrowItem, 1.0F, bow);
@@ -228,11 +239,21 @@ public final class Sentry {
 			Projectile.spawnProjectileUsingShoot(arrow, level, arrowItem, xd, yd + flat * 0.2F, zd, 1.6F, 6.0F);
 			level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.ARROW_SHOOT, SoundSource.NEUTRAL,
 				1.0F, 1.0F / (villager.getRandom().nextFloat() * 0.4F + 0.8F));
+			// A quiet villager "hrmm" with the shot, so archers sound like villagers rather than skeletons.
+			level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.VILLAGER_AMBIENT, SoundSource.NEUTRAL,
+				0.35F, 0.9F + villager.getRandom().nextFloat() * 0.2F);
 			if (TownsfolkConfig.sentryWeaponsWearOut) {
 				bow.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
 			}
 		}
 		return true;
+	}
+
+	/** Stops drawing the bow, if it was. */
+	private static void lowerBow(Villager villager) {
+		if (villager.isUsingItem() && villager.getUseItem().is(Items.BOW)) {
+			villager.stopUsingItem();
+		}
 	}
 
 	public static boolean hasArrows(Villager villager) {

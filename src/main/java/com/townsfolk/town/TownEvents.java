@@ -180,7 +180,9 @@ public final class TownEvents {
 			villager instanceof Villager ? villager.getInventory().getContainerSize() : 0,
 			villager instanceof Villager v3 && Sentry.canBecomeSentry(v3) && VillagerCommands.canCommand(player, villager),
 			villager instanceof Villager v2 && VillagerFood.canFeed(player, v2),
-			villager instanceof Villager v4 && v4.getVillagerData().profession().is(VillagerProfession.NITWIT)
+			villager instanceof Villager v4 && v4.getVillagerData().profession().is(VillagerProfession.NITWIT),
+			VillagerCommands.canRename(player, villager),
+			TownsfolkConfig.villagerFood
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

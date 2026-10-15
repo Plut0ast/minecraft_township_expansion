@@ -50,8 +50,8 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		this.nameBox = new EditBox(this.font, this.leftPos + 7, this.topPos + 4, 76, 12, Component.translatable("gui.townsfolk.villager.name"));
 		this.nameBox.setMaxLength(TownNames.MAX_LENGTH);
 		this.nameBox.setValue(this.savedName);
-		this.nameBox.visible = this.menu.data().canEdit();
-		this.nameBox.setEditable(this.menu.data().canEdit());
+		this.nameBox.visible = this.menu.data().canRename();
+		this.nameBox.setEditable(this.menu.data().canRename());
 		this.nameBox.setTooltip(Tooltip.create(Component.translatable("gui.townsfolk.villager.rename")));
 		this.addRenderableWidget(this.nameBox);
 		Button trade = Button.builder(Component.translatable("gui.townsfolk.villager.trade"), b -> {
@@ -146,7 +146,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 
 	/** Sends the typed name if it changed (on Enter, or when the screen closes). */
 	private void saveName() {
-		if (!this.menu.data().canEdit()) {
+		if (!this.menu.data().canRename()) {
 			return;
 		}
 		String cleaned = TownNames.clean(this.nameBox.getValue());

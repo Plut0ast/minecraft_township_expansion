@@ -126,12 +126,18 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		return this.level instanceof ServerLevel serverLevel && TownRegistry.get(serverLevel).isMember(this.worldPosition, player.getUUID());
 	}
 
-	/** Whoever places a Town Center founds the town and becomes its first player. */
-	public void found(Player founder) {
-		if (this.level instanceof ServerLevel serverLevel) {
-			this.syncRegistry();
-			TownRegistry.get(serverLevel).addMember(this.worldPosition, founder.getUUID(), founder.getName().getString());
+	/**
+	 * Whoever places a Town Center founds the town and becomes its first player, leaving any town they
+	 * were in. Returns the name of the town they left (empty if none).
+	 */
+	public String found(Player founder) {
+		if (!(this.level instanceof ServerLevel serverLevel)) {
+			return "";
 		}
+		this.syncRegistry();
+		String left = TownRegistry.leaveAllTowns(serverLevel.getServer(), founder.getUUID());
+		TownRegistry.get(serverLevel).addMember(this.worldPosition, founder.getUUID(), founder.getName().getString());
+		return left;
 	}
 
 	/** Heroes of this town may join it as players. Returns whether the player joined. */
@@ -140,6 +146,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			return false;
 		}
 		this.syncRegistry();
+		TownRegistry.leaveAllTowns(serverLevel.getServer(), player.getUUID());
 		TownRegistry.get(serverLevel).addMember(this.worldPosition, player.getUUID(), player.getName().getString());
 		return true;
 	}

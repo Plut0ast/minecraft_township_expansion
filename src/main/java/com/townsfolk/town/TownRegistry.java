@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -93,6 +94,11 @@ public class TownRegistry extends SavedData {
 		}
 	}
 
+	/** The town whose Town Center is at {@code pos}, or null. */
+	public @org.jspecify.annotations.Nullable Town town(BlockPos pos) {
+		return this.towns.get(key(pos));
+	}
+
 	public boolean isMember(BlockPos pos, UUID player) {
 		Town town = this.towns.get(key(pos));
 		return town != null && town.players().containsKey(player);
@@ -106,6 +112,34 @@ public class TownRegistry extends SavedData {
 			? new Town("", List.of(), List.of(), List.of(), players, ItemStack.EMPTY)
 			: town.withPlayers(players));
 		this.setDirty();
+	}
+
+	private void removeMember(String key, UUID player) {
+		Town town = this.towns.get(key);
+		if (town != null && town.players().containsKey(player)) {
+			Map<UUID, String> players = new LinkedHashMap<>(town.players());
+			players.remove(player);
+			this.towns.put(key, town.withPlayers(players));
+			this.setDirty();
+		}
+	}
+
+	/**
+	 * Players belong to one town at a time: takes the player out of every town in every dimension and
+	 * returns the name of the town they left (empty if none).
+	 */
+	public static String leaveAllTowns(MinecraftServer server, UUID player) {
+		String left = "";
+		for (ServerLevel level : server.getAllLevels()) {
+			TownRegistry registry = get(level);
+			for (Map.Entry<String, Town> entry : List.copyOf(registry.towns.entrySet())) {
+				if (entry.getValue().players().containsKey(player)) {
+					left = entry.getValue().name();
+					registry.removeMember(entry.getKey(), player);
+				}
+			}
+		}
+		return left;
 	}
 
 	public void remove(BlockPos pos) {

@@ -197,6 +197,16 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	/** Client side: show the viewer as a player of the opened town straight after joining. */
 	public void markJoined(String playerName) {
+		// Players belong to one town, so joining this one leaves any other.
+		for (int i = 1; i < this.towns.size(); i++) {
+			TownView town = this.towns.get(i);
+			if (town.players().contains(playerName)) {
+				List<String> players = new ArrayList<>(town.players());
+				players.remove(playerName);
+				this.towns.set(i, new TownView(town.pos(), town.name(), town.villagers(), town.villagerJobs(), town.golems(), players,
+					town.reputation(), town.banner()));
+			}
+		}
 		this.towns.set(0, this.home().withPlayer(playerName));
 		this.canJoin = false;
 	}

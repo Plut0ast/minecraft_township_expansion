@@ -55,6 +55,8 @@ public final class TownsfolkConfig {
 	public static int sentrySwordCooldown;
 	public static int sentryBowCooldown;
 	// Towns
+	public static boolean villagerCapes;
+	public static boolean playerCapes;
 	public static boolean generateTownCenters;
 	public static boolean farmChests;
 	public static boolean golemsAttackEnemies;
@@ -79,7 +81,7 @@ public final class TownsfolkConfig {
 		add("repairVisits", "true", "Villagers take worn gear to a smith for a free repair.");
 		add("playerRepairs", "true", "The Repair button on smiths' trade screens.");
 		section("Villagers");
-		add("villagerFood", "true", "Villagers have food, eat to heal, start with bread and fetch food from farmers and butchers.");
+		add("villagerFood", "false", "Villagers get a food slot, start with bread and fetch food from farmers and butchers. (Either way, villagers below half health eat food from their pockets.)");
 		add("arrivalWalk", "true", "Villagers walk to the Town Center and celebrate when they join a town.");
 		add("nitwitBabies", "true", "Babies can be born nitwits if a parent is one (50% with one nitwit parent, 100% with two).");
 		add("nitwitSpawnEggs", "true", "Villagers from spawn eggs have a 20% chance to be nitwits.");
@@ -98,6 +100,8 @@ public final class TownsfolkConfig {
 		add("sentrySwordCooldown", "20", "Ticks between sword hits (20 ticks = 1 second).");
 		add("sentryBowCooldown", "30", "Ticks between arrows (20 ticks = 1 second).");
 		section("Towns");
+		add("villagerCapes", "true", "A town's villagers and Sentries wear the banner from its Town Center as a cape.");
+		add("playerCapes", "true", "Players who have joined a town wear its banner as a cape (in place of their own cape).");
 		add("generateTownCenters", "true", "Villages get a Town Center automatically when a player first visits.");
 		add("farmChests", "true", "Village farms get a chest with starter seeds.");
 		add("golemsAttackEnemies", "true", "A town's iron golems attack players who are its Enemies.");
@@ -167,6 +171,8 @@ public final class TownsfolkConfig {
 		sentryBowCooldown = Math.max(1, integer(values, "sentryBowCooldown"));
 		nitwitBabies = bool(values, "nitwitBabies");
 		nitwitSpawnEggs = bool(values, "nitwitSpawnEggs");
+		villagerCapes = bool(values, "villagerCapes");
+		playerCapes = bool(values, "playerCapes");
 		generateTownCenters = bool(values, "generateTownCenters");
 		farmChests = bool(values, "farmChests");
 		golemsAttackEnemies = bool(values, "golemsAttackEnemies");

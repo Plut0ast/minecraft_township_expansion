@@ -3,6 +3,7 @@ package com.townsfolk.mixin;
 import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.town.RepairPayloads;
 import com.townsfolk.town.Sentry;
+import com.townsfolk.town.TownCapes;
 import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownExile;
 import com.townsfolk.town.VillagerFood;
@@ -78,7 +79,13 @@ public abstract class VillagerMixin {
 	@Inject(method = "customServerAiStep", at = @At("TAIL"))
 	private void townsfolk$applyCommand(ServerLevel level, CallbackInfo ci) {
 		Villager villager = (Villager) (Object) this;
+		TownCapes.tickVillager(villager, level);
 		if (Sentry.afterBrainTick(villager, level)) {
+			return;
+		}
+		// Mid-meal the hand holds food, so nothing else may use the hand (or lead the villager off) until it is done.
+		if (VillagerFood.isEating(villager)) {
+			VillagerFood.afterBrainTick(villager, level);
 			return;
 		}
 		VillagerCommands.afterBrainTick(villager, level);

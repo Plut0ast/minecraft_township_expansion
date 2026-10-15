@@ -27,6 +27,9 @@ Town Center recipe:
 Town banners:
 Trusted players can put a banner in the slot next to the town's name. Everyone browsing
 towns sees a small version of it on that town's page. Breaking the Town Center drops it.
+The town's villagers, Sentries and players all wear its banner as a cape. A player in
+several towns wears the nearest one's banner. Turning off "Cape" in Skin Customization
+hides yours.
 
 The Town Center screen shows:
 - Your rank with the town, with a progress bar showing how far you are from the next rank.
@@ -47,9 +50,11 @@ Hitting one of its villagers costs 5, and killing one costs another 25.
   Enemy      -10 or less   Iron golems and Sentries attack you
   Stranger   -9 to 9       You can still feed villagers
   Visitor    10+
-  Friend     50+           Change villagers' gear and pockets, rename villagers
+  Friend     50+           Rename villagers
   Trusted    150+          Give villagers orders, rename the town, arm nitwits
   Hero       400+          Join the town, and Sentries guard you
+Only the town's players can change its villagers' gear and pockets (Sentries too).
+You can only be a player of one town: joining or founding another one leaves your old town.
 
 
 VILLAGERS
@@ -58,9 +63,9 @@ VILLAGERS
 - Right-click to trade as usual. Shift-right-click to open its page: health, job, town,
   armour, food and pockets.
 - Armour shows on the villager, protects it, and wears out like yours.
-- Food: villagers start with some bread and eat to heal when they're hurt. Anyone except
-  an Enemy can hand them food, and they fetch more from farmers and butchers when they
-  run low.
+- Food: below half health, a villager takes food from its pockets into its hand and eats
+  it to heal, then goes back to holding what it had. (The optional food slot setting adds
+  starting bread and trips to farmers and butchers for more.)
 - Orders (Trusted): Wandering, Staying, Following, and Farming for farmers.
 - Villagers with worn-out gear walk to the right smith to get it repaired.
 

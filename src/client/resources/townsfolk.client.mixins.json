@@ -3,6 +3,7 @@
   "package": "com.townsfolk.client.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
+    "AvatarRendererMixin",
     "CrossedArmsItemLayerMixin",
     "InventoryScreenMixin",
     "VillagerModelMixin",

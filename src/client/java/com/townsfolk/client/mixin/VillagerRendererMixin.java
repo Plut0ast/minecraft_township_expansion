@@ -1,5 +1,6 @@
 package com.townsfolk.client.mixin;
 
+import com.townsfolk.client.BannerCapes;
 import com.townsfolk.client.HeldWeapons;
 import com.townsfolk.client.VillagerArmorLayer;
 import net.minecraft.client.renderer.entity.VillagerRenderer;
@@ -18,6 +19,7 @@ public abstract class VillagerRendererMixin {
 	)
 	private void townsfolk$extractArmor(Villager villager, VillagerRenderState state, float partialTicks, CallbackInfo ci) {
 		VillagerArmorLayer.extract(villager, state);
-		HeldWeapons.extract(villager, state);
+		HeldWeapons.extract(villager, state, partialTicks);
+		state.setData(BannerCapes.CAPE, BannerCapes.capeOf(villager));
 	}
 }

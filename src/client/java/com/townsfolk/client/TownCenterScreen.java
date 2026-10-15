@@ -11,6 +11,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -201,7 +202,11 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			: member ? "gui.townsfolk.town_center.join_member"
 			: this.menu.canJoin() ? "gui.townsfolk.town_center.join_tooltip"
 			: "gui.townsfolk.town_center.join_locked";
-		this.joinButton.setTooltip(Tooltip.create(Component.translatable(joinTip)));
+		String current = this.currentTownElsewhere();
+		Component tip = joinTip.equals("gui.townsfolk.town_center.join_tooltip") && current != null
+			? Component.translatable("gui.townsfolk.town_center.join_leaves", current)
+			: Component.translatable(joinTip);
+		this.joinButton.setTooltip(Tooltip.create(tip));
 	}
 
 	private void step(int direction) {
@@ -222,9 +227,39 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		if (!this.viewingHome() || !this.menu.canJoin()) {
 			return;
 		}
+		String current = this.currentTownElsewhere();
+		if (current != null) {
+			// Players belong to one town, so moving town is asked about first. Either answer comes back here.
+			this.minecraft.gui.setScreen(new ConfirmScreen(
+				yes -> {
+					this.minecraft.gui.setScreen(this);
+					if (yes) {
+						this.sendJoin();
+					}
+				},
+				Component.translatable("gui.townsfolk.town_center.move_title"),
+				Component.translatable("gui.townsfolk.town_center.move_message", current, this.menu.home().name())
+			));
+			return;
+		}
+		this.sendJoin();
+	}
+
+	private void sendJoin() {
 		this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, TownCenterMenu.BUTTON_JOIN);
 		this.menu.markJoined(this.minecraft.player.getName().getString());
 		this.refreshView();
+	}
+
+	/** The name of another town the viewer is already a player of, or null. */
+	private @Nullable String currentTownElsewhere() {
+		String me = this.minecraft.player.getName().getString();
+		for (TownCenterMenu.TownView town : this.menu.towns()) {
+			if (!town.pos().equals(this.menu.pos()) && town.players().contains(me)) {
+				return town.name();
+			}
+		}
+		return null;
 	}
 
 	/** Renaming is only possible for the town whose Town Center was opened, and only when Trusted. */

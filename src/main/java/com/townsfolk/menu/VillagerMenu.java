@@ -53,23 +53,32 @@ public class VillagerMenu extends AbstractContainerMenu {
 
 	/**
 	 * {@code townName} is empty when the villager has no town. {@code canCommand}: the viewer is Trusted
-	 * by the villager's town and may give orders. {@code canEdit}: the viewer may change its gear.
+	 * by the villager's town and may give orders. {@code canEdit}: the viewer is one of the town's players
+	 * and may change its gear and pockets. {@code canRename}: the viewer is a Friend of the town.
+	 * {@code showFood}: villager food is turned on in the settings, so the food slot is shown.
 	 */
 	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit,
-		int carrySlots, boolean canArm, boolean canFeed, boolean showHand) {
-		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
-			ByteBufCodecs.VAR_INT, Data::entityId,
-			ByteBufCodecs.STRING_UTF8, Data::name,
-			ComponentSerialization.TRUSTED_STREAM_CODEC, Data::profession,
-			ByteBufCodecs.STRING_UTF8, Data::townName,
-			ByteBufCodecs.BOOL, Data::canTrade,
-			ByteBufCodecs.BOOL, Data::canCommand,
-			ByteBufCodecs.BOOL, Data::canEdit,
-			ByteBufCodecs.VAR_INT, Data::carrySlots,
-			ByteBufCodecs.BOOL, Data::canArm,
-			ByteBufCodecs.BOOL, Data::canFeed,
-			ByteBufCodecs.BOOL, Data::showHand,
-			Data::new
+		int carrySlots, boolean canArm, boolean canFeed, boolean showHand, boolean canRename, boolean showFood) {
+		/** Written out by hand: vanilla's composite codec takes at most twelve fields. */
+		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.of(
+			(buf, data) -> {
+				buf.writeVarInt(data.entityId());
+				buf.writeUtf(data.name());
+				ComponentSerialization.TRUSTED_STREAM_CODEC.encode(buf, data.profession());
+				buf.writeUtf(data.townName());
+				buf.writeBoolean(data.canTrade());
+				buf.writeBoolean(data.canCommand());
+				buf.writeBoolean(data.canEdit());
+				buf.writeVarInt(data.carrySlots());
+				buf.writeBoolean(data.canArm());
+				buf.writeBoolean(data.canFeed());
+				buf.writeBoolean(data.showHand());
+				buf.writeBoolean(data.canRename());
+				buf.writeBoolean(data.showFood());
+			},
+			buf -> new Data(buf.readVarInt(), buf.readUtf(), ComponentSerialization.TRUSTED_STREAM_CODEC.decode(buf), buf.readUtf(),
+				buf.readBoolean(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readBoolean(), buf.readBoolean(),
+				buf.readBoolean(), buf.readBoolean(), buf.readBoolean())
 		);
 	}
 
@@ -117,7 +126,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 			}
 			// The villager's pockets: changing them needs Friend.
 			for (int i = 0; i < this.carrySlots(); i++) {
-				this.addSlot(new PocketSlot(villager.getInventory(), i, POCKET_X + i * 18, CARRY_Y, data.canEdit(), false));
+				this.addSlot(new PocketSlot(villager.getInventory(), i, this.pocketX() + i * 18, CARRY_Y, data.canEdit(), false));
 			}
 		} else {
 			// The villager is not loaded on this client; show empty placeholders rather than crash.
@@ -133,7 +142,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 			}
 			SimpleContainer carryPlaceholder = new SimpleContainer(Math.max(1, this.carrySlots()));
 			for (int i = 0; i < this.carrySlots(); i++) {
-				this.addSlot(new PocketSlot(carryPlaceholder, i, POCKET_X + i * 18, CARRY_Y, false, false));
+				this.addSlot(new PocketSlot(carryPlaceholder, i, this.pocketX() + i * 18, CARRY_Y, false, false));
 			}
 		}
 
@@ -154,9 +163,17 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return VillagerEquipmentContainer.HAND_INDEX + (this.data.showHand() ? 1 : 0);
 	}
 
-	/** Villagers (not wandering traders) have a food slot, right after the armour and hand slots. */
+	/**
+	 * Villagers (not wandering traders) have a food slot, right after the armour and hand slots, unless
+	 * villager food is turned off in the settings.
+	 */
 	public boolean hasFoodSlot() {
-		return this.carrySlots() > 0;
+		return this.carrySlots() > 0 && this.data.showFood();
+	}
+
+	/** Pockets sit right of the food slot, or take its place when there is none. */
+	private int pocketX() {
+		return this.hasFoodSlot() ? POCKET_X : FOOD_X;
 	}
 
 	public int foodSlotIndex() {

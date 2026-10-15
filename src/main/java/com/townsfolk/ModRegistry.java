@@ -7,6 +7,7 @@ import com.townsfolk.menu.RepairMenu;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.menu.VillagerMenu;
 import com.townsfolk.town.TownExile;
+import com.townsfolk.town.VillagerFood;
 import com.townsfolk.town.VillagerCommands;
 import com.townsfolk.work.ShepherdWork;
 import java.util.List;
@@ -84,6 +85,14 @@ public final class ModRegistry {
 		.persistent(BlockPos.CODEC)
 		.buildAndRegister(Townsfolk.id("town"));
 
+	/**
+	 * The banner of the town this villager or player belongs to, worn as a cape. Worked out again by
+	 * {@code TownCapes} every second, so it is not saved.
+	 */
+	public static final AttachmentType<ItemStack> CAPE = AttachmentRegistry.<ItemStack>builder()
+		.syncWith(ItemStack.OPTIONAL_STREAM_CODEC, AttachmentSyncPredicate.all())
+		.buildAndRegister(Townsfolk.id("cape"));
+
 	/** True when the villager's hand item was given by a player, so villager AI must not replace it. */
 	public static final AttachmentType<Boolean> HAND_OWNED = AttachmentRegistry.<Boolean>builder()
 		.persistent(Codec.BOOL)
@@ -144,6 +153,11 @@ public final class ModRegistry {
 	public static final AttachmentType<List<Integer>> OFFER_TIERS = AttachmentRegistry.<List<Integer>>builder()
 		.persistent(Codec.INT.listOf())
 		.buildAndRegister(Townsfolk.id("offer_tiers"));
+
+	/** Set while a villager is eating from its hand: what it was holding before, to give back after. */
+	public static final AttachmentType<VillagerFood.Meal> MEAL = AttachmentRegistry.<VillagerFood.Meal>builder()
+		.persistent(VillagerFood.Meal.CODEC)
+		.buildAndRegister(Townsfolk.id("meal"));
 
 	/** The Minecraft day the villager last rerolled its trades. */
 	public static final AttachmentType<Long> LAST_ROLL_DAY = AttachmentRegistry.<Long>builder()

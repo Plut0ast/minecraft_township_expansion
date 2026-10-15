@@ -1,5 +1,6 @@
 package com.townsfolk.client.mixin;
 
+import com.townsfolk.client.HeldWeapons;
 import com.townsfolk.client.VillagerArmorLayer;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
@@ -38,6 +39,12 @@ public abstract class VillagerModelMixin extends EntityModel<VillagerRenderState
 			if (head.hasChild("hat")) {
 				head.getChild("hat").visible = !helmet;
 			}
+		}
+
+		if (this.root.hasChild("arms")) {
+			ModelPart arms = this.root.getChild("arms");
+			HeldWeapons.animateJab(arms, state);
+			HeldWeapons.animateEating(arms, state);
 		}
 	}
 }

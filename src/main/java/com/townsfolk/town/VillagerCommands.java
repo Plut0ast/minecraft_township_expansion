@@ -58,10 +58,22 @@ public final class VillagerCommands {
 	}
 
 	/**
-	 * Friend (or better) with a villager's town may change its armour and hand item. Villagers with no
-	 * town, and wandering traders, have no town to befriend, so anyone may.
+	 * Only players of a villager's town may open its armour, hand and pockets (Sentries included).
+	 * Villagers with no town, and wandering traders, belong to no one, so anyone may.
 	 */
 	public static boolean canEditGear(Player player, AbstractVillager villager) {
+		if (!(villager.level() instanceof ServerLevel level)) {
+			return false;
+		}
+		BlockPos town = villager.getAttached(ModRegistry.TOWN);
+		if (town == null || TownCenters.isDestroyed(level, town)) {
+			return true;
+		}
+		return TownRegistry.get(level).isMember(town, player.getUUID());
+	}
+
+	/** Friend (or better) with a villager's town may rename it; anyone may rename one with no town. */
+	public static boolean canRename(Player player, AbstractVillager villager) {
 		if (!(villager.level() instanceof ServerLevel level)) {
 			return false;
 		}
