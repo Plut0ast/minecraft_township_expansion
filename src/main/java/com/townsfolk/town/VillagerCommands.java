@@ -123,6 +123,12 @@ public final class VillagerCommands {
 		Brain<Villager> brain = villager.getBrain();
 		UUID ownerId = villager.getAttached(ModRegistry.COMMAND_OWNER);
 		ServerPlayer owner = ownerId == null ? null : level.getServer().getPlayerList().getPlayer(ownerId);
+		if (command == Command.FOLLOW && owner == null) {
+			// The player they were following has left the game: go back to wandering.
+			villager.removeAttached(ModRegistry.COMMAND);
+			villager.removeAttached(ModRegistry.COMMAND_OWNER);
+			return;
+		}
 		boolean ownerHere = owner != null && owner.level() == level && !owner.isSpectator();
 
 		if (command == Command.FOLLOW && ownerHere) {
@@ -141,7 +147,7 @@ public final class VillagerCommands {
 			return;
 		}
 
-		// Staying, or following an owner who is offline or elsewhere: stand still.
+		// Staying, or following an owner who is in another dimension: stand still.
 		brain.eraseMemory(MemoryModuleType.WALK_TARGET);
 		villager.getNavigation().stop();
 	}

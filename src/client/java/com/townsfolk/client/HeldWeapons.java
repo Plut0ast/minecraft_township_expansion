@@ -32,12 +32,26 @@ public final class HeldWeapons {
 	 * with the string towards the villager. Resolved against the villager so it shows how far it is drawn.
 	 */
 	public static final RenderStateDataKey<ItemStackRenderState> BOW = RenderStateDataKey.create(() -> "townsfolk:held_bow");
+	/**
+	 * A held spear, seen as if held in a right hand (vanilla's long spear-in-hand model). It is carried
+	 * in a hand hanging at the villager's right side, point forward and a little up, like a guard.
+	 */
+	public static final RenderStateDataKey<ItemStackRenderState> SPEAR = RenderStateDataKey.create(() -> "townsfolk:held_spear");
+	/** Set when the held weapon is an axe, which is turned over so its head sits the right way up. */
+	public static final RenderStateDataKey<Boolean> AXE = RenderStateDataKey.create(() -> "townsfolk:held_axe");
 	/** Set while the villager is eating what it holds: its folded arms come up to its mouth. */
 	public static final RenderStateDataKey<Boolean> EATING = RenderStateDataKey.create(() -> "townsfolk:eating");
 
-	/** How far the folded arms lift and push forward with a melee hit (radians / pixels). */
-	private static final float JAB_LIFT = 0.9F;
-	private static final float JAB_REACH = 2.0F;
+	/**
+	 * A melee hit: the folded arms (and the weapon in them) wind up, strike down and forward past where
+	 * they rest, then come back. Radians for the swing, pixels for how far forward they reach.
+	 */
+	private static final float WIND_UP = 1.3F;
+	private static final float FOLLOW_THROUGH = 0.7F;
+	private static final float STRIKE_REACH = 3.0F;
+	/** Parts of the swing (0 to 1): winding up until this point, then striking until the next. */
+	private static final float WIND_UP_END = 0.35F;
+	private static final float STRIKE_END = 0.6F;
 
 	/** A little bigger than the small "on the ground" model villagers use for held items. */
 	private static final float SCALE = 1.5F;
@@ -47,6 +61,15 @@ public final class HeldWeapons {
 	private static final float TURN_FORWARD = -90.0F;
 	/** Pushes it a little further out so the handle sits at the folded arms, not inside them. */
 	private static final float OUT_FROM_ARMS = 0.08F;
+	/** Spears: the shoulder of an imaginary right arm at the villager's side (model pixels; right is negative x). */
+	private static final float SPEAR_SHOULDER_X = -5.5F;
+	private static final float SPEAR_SHOULDER_Y = -1.0F;
+	/** That arm leans forward this far (degrees), tilting the spear's point up. */
+	private static final float SPEAR_ARM_LEAN = -40.0F;
+	/** How much less the arm leans while pulling the spear back (degrees); it leans a bit further on the thrust. */
+	private static final float SPEAR_PULL = 10.0F;
+	/** How far (pixels) the spear is pulled back and then driven forward in a thrust. */
+	private static final float SPEAR_DRIVE = 4.0F;
 	/** Where the bow is gripped: in front of the folded arms, in model pixels (x, y down, z forward is negative). */
 	private static final float BOW_GRIP_X = 0.0F;
 	private static final float BOW_GRIP_Y = 6.0F;
@@ -65,6 +88,13 @@ public final class HeldWeapons {
 		ItemStack held = villager.getMainHandItem();
 		boolean weapon = isWeapon(held);
 		state.setData(WEAPON, weapon ? Boolean.TRUE : null);
+		state.setData(AXE, held.is(ItemTags.AXES) ? Boolean.TRUE : null);
+		ItemStackRenderState spearState = null;
+		if (held.is(ItemTags.SPEARS)) {
+			spearState = new ItemStackRenderState();
+			Minecraft.getInstance().getItemModelResolver().updateForLiving(spearState, held, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, villager);
+		}
+		state.setData(SPEAR, spearState);
 
 		boolean bow = held.is(Items.BOW);
 		float swing = weapon && !bow && villager.isSwinging() ? villager.getSwingAnimation(partialTicks) : 0.0F;
@@ -87,15 +117,29 @@ public final class HeldWeapons {
 		arms.y -= 1.5F;
 	}
 
-	/** A quick jab forward and up of the folded arms (and the weapon in them), eased in and out. */
+	/** Wind up, strike through, recover: see {@link #WIND_UP}. */
 	public static void animateJab(ModelPart arms, HoldingEntityRenderState state) {
 		Float swing = state.getData(SWING);
 		if (swing == null) {
 			return;
 		}
-		float amount = Mth.sin(swing * (float) Math.PI);
-		arms.xRot -= amount * JAB_LIFT;
-		arms.z -= amount * JAB_REACH;
+		arms.xRot += strikeAngle(swing);
+		arms.z -= Mth.sin(swing * (float) Math.PI) * STRIKE_REACH;
+	}
+
+	/** The swing's angle at this point: lifting back (negative), then down through to past rest, then back to rest. */
+	static float strikeAngle(float swing) {
+		if (swing < WIND_UP_END) {
+			return -WIND_UP * ease(swing / WIND_UP_END);
+		}
+		if (swing < STRIKE_END) {
+			return Mth.lerp(ease((swing - WIND_UP_END) / (STRIKE_END - WIND_UP_END)), -WIND_UP, FOLLOW_THROUGH);
+		}
+		return FOLLOW_THROUGH * (1.0F - ease((swing - STRIKE_END) / (1.0F - STRIKE_END)));
+	}
+
+	private static float ease(float t) {
+		return t * t * (3.0F - 2.0F * t);
 	}
 
 	/**
@@ -118,6 +162,29 @@ public final class HeldWeapons {
 		poseStack.popPose();
 	}
 
+	/**
+	 * A spear carried at the villager's right side: as if in the hand of an arm hanging from the right
+	 * shoulder and leaning a little forward, then vanilla's hand-item steps, so the point faces forward
+	 * and slightly up and the butt sits low. A hit thrusts it forward.
+	 */
+	public static void submitSpear(ModelPart root, HoldingEntityRenderState state, ItemStackRenderState spear, PoseStack poseStack,
+		SubmitNodeCollector collector, int lightCoords, int outlineColor) {
+		Float swing = state.getData(SWING);
+		// Pulled back, then driven forward and a little down: a thrust rather than a chop.
+		float thrust = swing == null ? 0.0F : -strikeAngle(swing) / WIND_UP * SPEAR_PULL;
+		float drive = swing == null ? 0.0F : -strikeAngle(swing) / WIND_UP * SPEAR_DRIVE;
+		poseStack.pushPose();
+		root.translateAndRotate(poseStack);
+		poseStack.translate(SPEAR_SHOULDER_X / 16.0F, SPEAR_SHOULDER_Y / 16.0F, drive / 16.0F);
+		poseStack.rotateDegrees(Axis.XP, SPEAR_ARM_LEAN + thrust);
+		// Exactly what vanilla's hand item layer does for a 12 pixel arm.
+		poseStack.rotateDegrees(Axis.XP, -90.0F);
+		poseStack.rotateDegrees(Axis.YP, 180.0F);
+		poseStack.translate(1.0F / 16.0F, 2.0F / 16.0F, -10.0F / 16.0F);
+		spear.submit(poseStack, collector, lightCoords, OverlayTexture.NO_OVERLAY, outlineColor);
+		poseStack.popPose();
+	}
+
 	/** Vanilla's centred spot in front of the folded arms, held diagonally, turned to point forward. */
 	@SuppressWarnings("unchecked")
 	public static void applyGrip(VillagerLikeModel<?> model, HoldingEntityRenderState state, PoseStack poseStack) {
@@ -133,5 +200,9 @@ public final class HeldWeapons {
 		poseStack.rotateDegrees(Axis.YP, TURN_FORWARD);
 		poseStack.scale(SCALE, SCALE, SCALE);
 		poseStack.translate(OUT_FROM_ARMS, 0.0F, 0.0F);
+		if (state.getData(AXE) != null) {
+			// An axe's icon has its head the other way round from a sword's blade.
+			poseStack.rotateDegrees(Axis.ZP, 180.0F);
+		}
 	}
 }

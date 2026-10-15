@@ -43,6 +43,8 @@ public final class TownsfolkConfig {
 	// Sentries
 	public static boolean sentries;
 	public static boolean swordSentries;
+	public static boolean axeSentries;
+	public static boolean spearSentries;
 	public static boolean archerSentries;
 	public static boolean sentryBodyguards;
 	public static boolean sentriesAttackEnemies;
@@ -88,6 +90,8 @@ public final class TownsfolkConfig {
 		section("Sentries");
 		add("sentries", "true", "Master switch: nitwits armed with a sword or bow become Sentries.");
 		add("swordSentries", "true", "Nitwits holding a sword become Sentries.");
+		add("axeSentries", "true", "Nitwits holding an axe become Sentries (slower, harder hits, like a player's axe).");
+		add("spearSentries", "true", "Nitwits holding a spear become Sentries (a little more reach).");
 		add("archerSentries", "true", "Nitwits holding a bow become archer Sentries.");
 		add("sentryBodyguards", "true", "A Sentry following a Hero of its town guards that player.");
 		add("sentriesAttackEnemies", "true", "Sentries attack players who are Enemies of their town (off = mobs only).");
@@ -97,7 +101,7 @@ public final class TownsfolkConfig {
 		add("sentryBodyguardRadius", "12", "How far (in blocks) around its Hero a bodyguard Sentry looks for trouble.");
 		add("sentryBowRange", "14", "How far (in blocks) archer Sentries shoot from.");
 		add("sentryDamageMultiplier", "1.0", "Multiplies Sentries' sword and arrow damage (1.0 = same as a player).");
-		add("sentrySwordCooldown", "20", "Ticks between sword hits (20 ticks = 1 second).");
+		add("sentrySwordCooldown", "20", "Ticks between sword hits (20 ticks = 1 second). Axes and spears scale this by their attack speed.");
 		add("sentryBowCooldown", "30", "Ticks between arrows (20 ticks = 1 second).");
 		section("Towns");
 		add("villagerCapes", "true", "A town's villagers and Sentries wear the banner from its Town Center as a cape.");
@@ -158,6 +162,8 @@ public final class TownsfolkConfig {
 		arrivalWalk = bool(values, "arrivalWalk");
 		sentries = bool(values, "sentries");
 		swordSentries = bool(values, "swordSentries");
+		axeSentries = bool(values, "axeSentries");
+		spearSentries = bool(values, "spearSentries");
 		archerSentries = bool(values, "archerSentries");
 		sentryBodyguards = bool(values, "sentryBodyguards");
 		sentriesAttackEnemies = bool(values, "sentriesAttackEnemies");

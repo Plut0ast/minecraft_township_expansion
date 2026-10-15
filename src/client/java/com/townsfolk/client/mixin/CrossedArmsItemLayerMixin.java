@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Weapons stand upright in the middle of a villager's folded arms instead of lying across them. */
 @Mixin(CrossedArmsItemLayer.class)
 public abstract class CrossedArmsItemLayerMixin {
-	/** Bows are held out in front, upright, instead of in the folded arms like other weapons. */
+	/** Bows are held out in front, upright, and spears at the side, instead of in the folded arms like other weapons. */
 	@Inject(
 		method = "submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/client/renderer/entity/state/HoldingEntityRenderState;FF)V",
 		at = @At("HEAD"),
@@ -25,6 +25,12 @@ public abstract class CrossedArmsItemLayerMixin {
 	)
 	private void townsfolk$holdBow(PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, HoldingEntityRenderState state,
 		float yRot, float xRot, CallbackInfo ci) {
+		ItemStackRenderState spear = state.getData(HeldWeapons.SPEAR);
+		if (spear != null && !spear.isEmpty() && ((RenderLayer<?, ?>) (Object) this).getParentModel() instanceof EntityModel<?> spearModel) {
+			HeldWeapons.submitSpear(spearModel.root(), state, spear, poseStack, collector, lightCoords, state.outlineColor);
+			ci.cancel();
+			return;
+		}
 		ItemStackRenderState bow = state.getData(HeldWeapons.BOW);
 		if (bow != null && !bow.isEmpty() && ((RenderLayer<?, ?>) (Object) this).getParentModel() instanceof EntityModel<?> model) {
 			HeldWeapons.submitBow(model.root(), bow, poseStack, collector, lightCoords, state.outlineColor);

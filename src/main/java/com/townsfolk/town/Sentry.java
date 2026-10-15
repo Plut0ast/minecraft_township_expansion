@@ -33,6 +33,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -47,6 +48,12 @@ public final class Sentry {
 	/** Staying Sentries only hit what comes right up to them. */
 	private static final double STAY_RADIUS = 3.0;
 	private static final double REACH = 2.2;
+	/** Spears are long, so spear Sentries strike from further away. */
+	private static final double SPEAR_REACH = 3.2;
+	/** A sword's attack speed; slower weapons (axes) wait longer between hits than the sword cooldown. */
+	private static final double SWORD_SPEED = 1.6;
+	/** How long a Sentry's melee swing animation lasts. */
+	private static final int ATTACK_SWING_TICKS = 10;
 	private static final int TARGET_SEARCH_INTERVAL_TICKS = 10;
 	private static final float CHASE_SPEED = 0.75F;
 	/** Archers draw for this long before loosing, like a skeleton (shorter if the bow cooldown is shorter). */
@@ -63,18 +70,38 @@ public final class Sentry {
 		return !villager.isBaby() && villager.getVillagerData().profession().is(VillagerProfession.NITWIT);
 	}
 
-	/** A nitwit of a town holding a sword. */
+	/** A nitwit of a town holding a sword, axe, spear or bow. */
 	public static boolean isSentry(Villager villager) {
 		// A Sentry stays one while it eats, with its weapon put away.
 		ItemStack weapon = VillagerFood.heldOutsideMeals(villager);
-		boolean allowed = weapon.is(Items.BOW) ? TownsfolkConfig.archerSentries : TownsfolkConfig.swordSentries;
+		boolean allowed = weapon.is(Items.BOW) ? TownsfolkConfig.archerSentries
+			: weapon.is(ItemTags.AXES) ? TownsfolkConfig.axeSentries
+			: weapon.is(ItemTags.SPEARS) ? TownsfolkConfig.spearSentries
+			: TownsfolkConfig.swordSentries;
 		return TownsfolkConfig.sentries && allowed && canBecomeSentry(villager) && isSentryWeapon(weapon)
 			&& villager.getAttached(ModRegistry.TOWN) != null;
 	}
 
-	/** Swords for close fighting, bows for shooting arrows from the Sentry's pockets. */
+	/** Swords, axes and spears for close fighting, bows for shooting arrows from the Sentry's pockets. */
 	public static boolean isSentryWeapon(ItemStack stack) {
-		return stack.is(ItemTags.SWORDS) || stack.is(Items.BOW);
+		return stack.is(ItemTags.SWORDS) || stack.is(ItemTags.AXES) || stack.is(ItemTags.SPEARS) || stack.is(Items.BOW);
+	}
+
+	private static double reachOf(ItemStack weapon) {
+		return weapon.is(ItemTags.SPEARS) ? SPEAR_REACH : REACH;
+	}
+
+	/**
+	 * Ticks between melee hits: the sword cooldown setting, made longer for weapons slower than a sword
+	 * (axes) and shorter for faster ones, using the weapon's own attack speed like a player.
+	 */
+	private static int cooldownOf(ItemStack weapon) {
+		ItemAttributeModifiers modifiers = weapon.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
+		double speed = modifiers.compute(Attributes.ATTACK_SPEED, 4.0, EquipmentSlot.MAINHAND);
+		if (speed <= 0.0) {
+			return TownsfolkConfig.sentrySwordCooldown;
+		}
+		return Math.max(1, (int) Math.round(TownsfolkConfig.sentrySwordCooldown * SWORD_SPEED / speed));
 	}
 
 	public static boolean isArcher(Villager villager) {
@@ -116,7 +143,7 @@ public final class Sentry {
 		if (isArcher(villager)) {
 			return shootAt(level, villager, target, command);
 		}
-		if (villager.distanceTo(target) > REACH) {
+		if (villager.distanceTo(target) > reachOf(villager.getMainHandItem())) {
 			if (command != VillagerCommands.Command.STAY) {
 				villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(target, CHASE_SPEED, 1));
 			}
@@ -126,7 +153,7 @@ public final class Sentry {
 		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		long now = level.getGameTime();
 		if (now >= NEXT_ATTACK.getOrDefault(villager, 0L) && villager.hasLineOfSight(target)) {
-			NEXT_ATTACK.put(villager, now + TownsfolkConfig.sentrySwordCooldown);
+			NEXT_ATTACK.put(villager, now + cooldownOf(villager.getMainHandItem()));
 			attack(level, villager, target);
 		}
 		return true;
@@ -291,17 +318,18 @@ public final class Sentry {
 	}
 
 	private static void attack(ServerLevel level, Villager villager, LivingEntity target) {
-		ItemStack sword = villager.getMainHandItem();
-		villager.swingForAttack(InteractionHand.MAIN_HAND);
-		float damage = (float) (damageOf(sword) * TownsfolkConfig.sentryDamageMultiplier);
+		ItemStack weapon = villager.getMainHandItem();
+		// A slower swing than a player's (6 ticks), so the wind-up and strike can be seen.
+		villager.swing(InteractionHand.MAIN_HAND, new SwingAnimation(weapon.getAttackAnimation().type(), ATTACK_SWING_TICKS));
+		float damage = (float) (damageOf(weapon) * TownsfolkConfig.sentryDamageMultiplier);
 		if (target.hurtServer(level, level.damageSources().mobAttack(villager), damage) && TownsfolkConfig.sentryWeaponsWearOut) {
-			sword.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
+			weapon.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
 		}
 	}
 
-	/** The sword's own attack damage (wood 4 up to netherite 8), as if a player swung it. */
-	private static float damageOf(ItemStack sword) {
-		ItemAttributeModifiers modifiers = sword.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
+	/** The weapon's own attack damage (a netherite sword 8, a diamond axe 9), as if a player swung it. */
+	private static float damageOf(ItemStack weapon) {
+		ItemAttributeModifiers modifiers = weapon.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
 		return (float) modifiers.compute(Attributes.ATTACK_DAMAGE, 1.0, EquipmentSlot.MAINHAND);
 	}
 }

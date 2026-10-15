@@ -66,7 +66,8 @@ VILLAGERS
 - Food: below half health, a villager takes food from its pockets into its hand and eats
   it to heal, then goes back to holding what it had. (The optional food slot setting adds
   starting bread and trips to farmers and butchers for more.)
-- Orders (Trusted): Wandering, Staying, Following, and Farming for farmers.
+- Orders (Trusted): Wandering, Staying, Following, and Farming for farmers. Followers go
+  back to Wandering if the player they follow logs off.
 - Villagers with worn-out gear walk to the right smith to get it repaired.
 
 Trades and your standing:
@@ -103,7 +104,7 @@ emeralds, and it comes back repaired with its enchantments kept.
 
 NITWITS, SENTRIES & GOLEMS
 --------------------------
-- Give a nitwit a sword or a bow (you need to be Trusted) and it becomes a Sentry.
+- Give a nitwit a sword, axe, spear or bow (you need to be Trusted) and it becomes a Sentry.
   Sentries fight hostile mobs in their town and attack the town's Enemies. Archers shoot
   arrows from their pockets.
 - A Sentry that follows a Hero becomes that Hero's bodyguard.

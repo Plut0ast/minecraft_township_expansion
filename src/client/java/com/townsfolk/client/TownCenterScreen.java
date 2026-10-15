@@ -5,7 +5,10 @@ import com.townsfolk.town.RenameTownPayload;
 import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownReputation;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -14,6 +17,8 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -43,14 +48,20 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	private static final int HEADER_COLOR = 0xFF404040;
 	private static final int NAME_COLOR = 0xFFFFFFFF;
 	private static final int JOB_COLOR = 0xFFAAAAAA;
+	private static final int HEADER_HOVER_FILL = 0x30FFFFFF;
 
 	/**
-	 * A list line. Headers ("Villagers (5)") are drawn dark without a shadow, like vanilla labels.
+	 * A list line. Headers ("Villagers (5)") are drawn dark without a shadow, like vanilla labels, and
+	 * fold their section away when clicked; {@code section} is the header's key (null for other rows).
 	 * {@code villagerIndex} is the row's index in the opened town's villager list, or -1 for other rows.
+	 * {@code job} is shown on the right of villager rows (null for other rows).
 	 */
-	/** {@code job} is shown on the right of villager rows (null for other rows). */
-	private record Row(Component text, int color, boolean header, int villagerIndex, @Nullable Component job) {
+	private record Row(Component text, int color, boolean header, int villagerIndex, @Nullable Component job, @Nullable String section) {
 	}
+
+	private static final String SENTRY_JOB = "gui.townsfolk.villager.sentry";
+	/** Sections folded away; kept while the game runs so they stay folded the next time a Town Center is opened. */
+	private static final Set<String> COLLAPSED = new HashSet<>();
 
 	private static final int REMOVE_X = LIST_X + LIST_W - 16;
 	private static final int REMOVE_COLOR = 0xFFAAAAAA;
@@ -103,7 +114,10 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		return this.menu.home().players().contains(me);
 	}
 
-	/** Sections with headings for players, villagers and golems. Empty sections are left out. */
+	/**
+	 * Sections with headings for players, villagers, Sentries and golems. Empty sections are left out,
+	 * and a folded section shows only its heading.
+	 */
 	private List<Row> rows() {
 		List<Row> rows = new ArrayList<>();
 		TownCenterMenu.TownView town = this.current();
@@ -111,32 +125,72 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			return rows;
 		}
 		boolean removable = this.viewingHome() && this.menu.canRemove();
-		if (!town.players().isEmpty()) {
-			rows.add(header("gui.townsfolk.town_center.players", town.players().size()));
-			for (String player : town.players()) {
-				rows.add(new Row(Component.literal(player), NAME_COLOR, false, -1, null));
+
+		List<Row> players = new ArrayList<>();
+		for (String player : town.players()) {
+			players.add(new Row(Component.literal(player), NAME_COLOR, false, -1, null, null));
+		}
+		// Sentries are listed on their own, like golems; everyone else under Villagers with their job.
+		List<Row> villagers = new ArrayList<>();
+		List<Row> sentries = new ArrayList<>();
+		for (int i = 0; i < town.villagers().size(); i++) {
+			String jobKey = i < town.villagerJobs().size() ? town.villagerJobs().get(i) : "";
+			Component name = Component.literal(town.villagers().get(i));
+			if (jobKey.equals(SENTRY_JOB)) {
+				sentries.add(new Row(name, NAME_COLOR, false, removable ? i : -1, null, null));
+			} else {
+				villagers.add(new Row(name, NAME_COLOR, false, removable ? i : -1, jobKey.isEmpty() ? null : Component.translatable(jobKey), null));
 			}
 		}
-		if (!town.villagers().isEmpty()) {
-			rows.add(header("gui.townsfolk.town_center.villagers", town.villagers().size()));
-			for (int i = 0; i < town.villagers().size(); i++) {
-				Component job = i < town.villagerJobs().size() && !town.villagerJobs().get(i).isEmpty()
-					? Component.translatable(town.villagerJobs().get(i))
-					: null;
-				rows.add(new Row(Component.literal(town.villagers().get(i)), NAME_COLOR, false, removable ? i : -1, job));
-			}
+		List<Row> golems = new ArrayList<>();
+		for (String golem : town.golems()) {
+			golems.add(new Row(Component.literal(golem), NAME_COLOR, false, -1, null, null));
 		}
-		if (!town.golems().isEmpty()) {
-			rows.add(header("gui.townsfolk.town_center.golems", town.golems().size()));
-			for (String golem : town.golems()) {
-				rows.add(new Row(Component.literal(golem), NAME_COLOR, false, -1, null));
-			}
-		}
+
+		addSection(rows, "gui.townsfolk.town_center.players", players);
+		addSection(rows, "gui.townsfolk.town_center.villagers", villagers);
+		addSection(rows, "gui.townsfolk.town_center.sentries", sentries);
+		addSection(rows, "gui.townsfolk.town_center.golems", golems);
 		return rows;
 	}
 
-	private static Row header(String key, int count) {
-		return new Row(Component.translatable(key, count), HEADER_COLOR, true, -1, null);
+	private static void addSection(List<Row> rows, String key, List<Row> members) {
+		if (members.isEmpty()) {
+			return;
+		}
+		boolean folded = COLLAPSED.contains(key);
+		// Clicking the heading folds or unfolds it; a small pixel arrow (drawn with the list) shows which.
+		rows.add(new Row(Component.translatable(key, members.size()), HEADER_COLOR, true, -1, null, key));
+		if (!folded) {
+			rows.addAll(members);
+		}
+	}
+
+	/**
+	 * A small pixel arrow, like vanilla's: pointing right (4 x 7 pixels) when the section is folded,
+	 * pointing down (7 x 4) when it is open. {@code top} is the top of the text line.
+	 */
+	private static void extractArrow(GuiGraphicsExtractor graphics, int left, int top, boolean folded) {
+		for (int i = 0; i < 4; i++) {
+			if (folded) {
+				// Column i spans rows i..6-i.
+				graphics.fill(left + i, top + i, left + i + 1, top + 7 - i, HEADER_COLOR);
+			} else {
+				// Row i spans columns i..6-i.
+				graphics.fill(left + i, top + 1 + i, left + 7 - i, top + 2 + i, HEADER_COLOR);
+			}
+		}
+	}
+
+	/** The list row under the mouse, or -1. */
+	private int rowAt(double mouseX, double mouseY) {
+		double localX = mouseX - this.leftPos - LIST_X;
+		double localY = mouseY - this.topPos - LIST_Y - 2;
+		if (localX < 0 || localX >= LIST_W - 6 || localY < 0 || localY >= LIST_H - 4) {
+			return -1;
+		}
+		int row = this.scroll + (int) (localY / ROW_HEIGHT);
+		return row < this.rows().size() ? row : -1;
 	}
 
 	@Override
@@ -341,7 +395,16 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 				break;
 			}
 			Row row = rows.get(i);
-			graphics.text(this.font, row.text(), x + LIST_X + (row.header() ? 3 : 8), rowY, row.color(), !row.header());
+			if (row.section() != null) {
+				if (this.rowAt(mouseX, mouseY) == i) {
+					// Headings light up under the mouse, to show they can be clicked.
+					graphics.fill(x + LIST_X + 1, rowY - 2, x + LIST_X + LIST_W - 6, rowY + 10, HEADER_HOVER_FILL);
+				}
+				extractArrow(graphics, x + LIST_X + 4, rowY, COLLAPSED.contains(row.section()));
+				graphics.text(this.font, row.text(), x + LIST_X + 12, rowY, row.color(), false);
+			} else {
+				graphics.text(this.font, row.text(), x + LIST_X + (row.header() ? 3 : 8), rowY, row.color(), !row.header());
+			}
 			if (row.job() != null) {
 				// Right-aligned, clear of the remove mark and the scrollbar.
 				int right = x + (row.villagerIndex() >= 0 ? REMOVE_X - 4 : LIST_X + LIST_W - 7);
@@ -449,8 +512,18 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		int clicked = this.rowAt(event.x(), event.y());
+		if (clicked >= 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT && this.rows().get(clicked).section() != null) {
+			String section = this.rows().get(clicked).section();
+			if (!COLLAPSED.remove(section)) {
+				COLLAPSED.add(section);
+			}
+			this.scroll = Mth.clamp(this.scroll, 0, this.maxScroll());
+			this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+			return true;
+		}
 		int row = this.removeRowAt(event.x(), event.y());
-		if (row >= 0 && event.button() == 0) {
+		if (row >= 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 			int index = this.rows().get(row).villagerIndex();
 			this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, TownCenterMenu.BUTTON_REMOVE_FIRST + index);
 			this.menu.markRemoved(index);
