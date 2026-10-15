@@ -2,12 +2,24 @@ package com.townsfolk.client;
 
 import com.townsfolk.ModRegistry;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.model.npc.VillagerModel;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.state.VillagerRenderState;
+import net.minecraft.world.entity.EntityTypes;
 
 public class TownsfolkClient implements ClientModInitializer {
 	@Override
+	@SuppressWarnings("unchecked")
 	public void onInitializeClient() {
 		MenuScreens.register(ModRegistry.TOWN_CENTER_MENU, TownCenterScreen::new);
 		MenuScreens.register(ModRegistry.VILLAGER_MENU, VillagerScreen::new);
+
+		LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
+			if (entityType == EntityTypes.VILLAGER) {
+				helper.register(new VillagerArmorLayer((RenderLayerParent<VillagerRenderState, VillagerModel>) renderer, context));
+			}
+		});
 	}
 }
