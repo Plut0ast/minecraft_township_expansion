@@ -48,5 +48,7 @@
   "gui.townsfolk.town_center.villagers": "Villagers (%s)",
   "gui.townsfolk.town_center.golems": "Golems (%s)",
   "gui.townsfolk.villager.command.farm": "Farming",
-  "gui.townsfolk.villager.sentry": "Sentry"
+  "gui.townsfolk.villager.sentry": "Sentry",
+  "gui.townsfolk.villager.name": "Villager name",
+  "gui.townsfolk.villager.rename": "Type a new name and press Enter"
 }

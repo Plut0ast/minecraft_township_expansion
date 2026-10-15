@@ -12,18 +12,20 @@ import net.minecraft.world.item.Items;
 
 /**
  * Villagers normally lay whatever they hold across their folded arms, which looks wrong for a sword.
- * Weapons are instead stood upright, blade up, dead centre in front of the folded arms, facing out.
+ * Weapons are instead held diagonally in the middle of the folded arms, turned a quarter so they point forward.
  */
 public final class HeldWeapons {
 	/** Set on a villager's render state when it holds a weapon this frame. */
 	public static final RenderStateDataKey<Boolean> WEAPON = RenderStateDataKey.create(() -> "townsfolk:held_weapon");
 
-	/** Item icons draw weapons diagonally (handle bottom-left); this turns them blade-up. */
-	private static final float STAND_UPRIGHT = 45.0F;
 	/** A little bigger than the small "on the ground" model villagers use for held items. */
 	private static final float SCALE = 1.5F;
-	/** Raise the weapon so its handle, not its middle, sits at the folded arms. */
-	private static final float RAISE = 0.18F;
+	/** Raise it slightly so the grip sits at the folded arms. */
+	private static final float RAISE = 0.1F;
+	/** Turns the held weapon a quarter turn so it points out in front instead of facing the viewer. */
+	private static final float TURN_FORWARD = -90.0F;
+	/** Pushes it a little further out so the handle sits at the folded arms, not inside them. */
+	private static final float OUT_FROM_ARMS = 0.08F;
 
 	private HeldWeapons() {
 	}
@@ -33,12 +35,12 @@ public final class HeldWeapons {
 			|| stack.is(Items.TRIDENT) || stack.is(Items.MACE);
 	}
 
-	/** Called while the villager's render state is extracted: marks weapons for the upright pose. */
+	/** Called while the villager's render state is extracted: marks weapons for the held pose. */
 	public static void extract(AbstractVillager villager, HoldingEntityRenderState state) {
 		state.setData(WEAPON, isWeapon(villager.getMainHandItem()) ? Boolean.TRUE : null);
 	}
 
-	/** Vanilla's centred spot in front of the folded arms, then stood upright, blade up, facing out. */
+	/** Vanilla's centred spot in front of the folded arms, held diagonally, turned to point forward. */
 	@SuppressWarnings("unchecked")
 	public static void applyGrip(VillagerLikeModel<?> model, HoldingEntityRenderState state, PoseStack poseStack) {
 		((VillagerLikeModel<HoldingEntityRenderState>) model).translateToArms(state, poseStack);
@@ -47,9 +49,11 @@ public final class HeldWeapons {
 		poseStack.scale(1.07F, 1.07F, 1.07F);
 		poseStack.translate(0.0F, 0.13F, -0.34F);
 		poseStack.rotate(Axis.XP, (float) Math.PI);
-		// Now facing the viewer with up being up: lift it, then turn the diagonal icon blade-up.
+		// Now facing out with up being up: held diagonally like its icon, turned a quarter so the blade
+		// points forward out of the folded arms.
 		poseStack.translate(0.0F, RAISE, 0.0F);
-		poseStack.rotateDegrees(Axis.ZP, STAND_UPRIGHT);
+		poseStack.rotateDegrees(Axis.YP, TURN_FORWARD);
 		poseStack.scale(SCALE, SCALE, SCALE);
+		poseStack.translate(OUT_FROM_ARMS, 0.0F, 0.0F);
 	}
 }

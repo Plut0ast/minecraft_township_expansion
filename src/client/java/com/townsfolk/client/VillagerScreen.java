@@ -1,9 +1,14 @@
 package com.townsfolk.client;
 
 import com.townsfolk.menu.VillagerMenu;
+import com.townsfolk.town.RenameVillagerPayload;
+import com.townsfolk.town.TownNames;
 import com.townsfolk.town.VillagerCommands;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -27,6 +32,9 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 
 	private float xMouse;
 	private Button commandButton;
+	/** Friends of the villager's town can rename it here; everyone else sees a plain title. */
+	private EditBox nameBox;
+	private String savedName;
 
 	private float yMouse;
 
@@ -38,7 +46,16 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	@Override
 	protected void init() {
 		super.init();
+		this.savedName = this.savedName == null ? this.menu.data().name() : this.savedName;
+		this.nameBox = new EditBox(this.font, this.leftPos + 7, this.topPos + 4, 76, 12, Component.translatable("gui.townsfolk.villager.name"));
+		this.nameBox.setMaxLength(TownNames.MAX_LENGTH);
+		this.nameBox.setValue(this.savedName);
+		this.nameBox.visible = this.menu.data().canEdit();
+		this.nameBox.setEditable(this.menu.data().canEdit());
+		this.nameBox.setTooltip(Tooltip.create(Component.translatable("gui.townsfolk.villager.rename")));
+		this.addRenderableWidget(this.nameBox);
 		Button trade = Button.builder(Component.translatable("gui.townsfolk.villager.trade"), b -> {
+				this.saveName();
 				this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, VillagerMenu.BUTTON_TRADE);
 			})
 			.bounds(this.leftPos + 100, this.topPos + 71, 68, 20)
@@ -127,6 +144,41 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		}
 	}
 
+	/** Sends the typed name if it changed (on Enter, or when the screen closes). */
+	private void saveName() {
+		if (!this.menu.data().canEdit()) {
+			return;
+		}
+		String cleaned = TownNames.clean(this.nameBox.getValue());
+		if (!cleaned.isEmpty() && !cleaned.equals(this.savedName)) {
+			ClientPlayNetworking.send(new RenameVillagerPayload(this.menu.containerId, cleaned));
+			this.savedName = cleaned;
+		}
+		this.nameBox.setValue(this.savedName);
+		this.nameBox.setFocused(false);
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (event.isEscape()) {
+			this.onClose();
+			return true;
+		}
+		if (this.nameBox.isFocused() && event.isConfirmation()) {
+			this.saveName();
+			return true;
+		}
+		// While typing, keys like E must go to the name box instead of closing the screen.
+		return this.nameBox.keyPressed(event) || this.nameBox.canConsumeInput() || super.keyPressed(event);
+	}
+
+	/** Save before the close reaches the server, which only accepts a rename while the screen is open. */
+	@Override
+	public void onClose() {
+		this.saveName();
+		super.onClose();
+	}
+
 	/** Cuts long text (such as a 32-character town name) to fit the panel, ending in an ellipsis. */
 	private String fit(Component text, int maxWidth) {
 		String value = text.getString();
@@ -155,7 +207,9 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
 		VillagerMenu.Data data = this.menu.data();
-		graphics.text(this.font, Component.literal(data.name()), this.titleLabelX, this.titleLabelY, Panels.TEXT, false);
+		if (!this.nameBox.visible) {
+			graphics.text(this.font, Component.literal(this.savedName), this.titleLabelX, this.titleLabelY, Panels.TEXT, false);
+		}
 		graphics.text(this.font, data.profession(), 100, 20, 0xFF606060, false);
 		Component town = data.townName().isEmpty()
 			? Component.translatable("gui.townsfolk.villager.no_town")
