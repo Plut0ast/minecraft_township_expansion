@@ -170,9 +170,13 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		boolean home = this.viewingHome();
 		this.scroll = 0;
 
+		// Only players allowed to rename see the name box; everyone else sees a plain title.
+		boolean renaming = this.canRenameHere();
 		this.nameBox.setValue(town == null ? "" : town.name());
-		this.nameBox.setEditable(home && this.menu.canRename());
+		this.nameBox.setEditable(renaming);
+		this.nameBox.visible = renaming;
 		this.nameBox.setFocused(false);
+		this.saveButton.visible = renaming;
 		this.updateSaveButton();
 
 		int count = this.visibleTowns().size();
@@ -215,13 +219,14 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		this.refreshView();
 	}
 
+	/** Renaming is only possible for the town whose Town Center was opened, and only when Trusted. */
+	private boolean canRenameHere() {
+		return this.viewingHome() && this.menu.canRename();
+	}
+
 	private void updateSaveButton() {
-		boolean home = this.viewingHome();
 		String cleaned = TownNames.clean(this.nameBox.getValue());
-		this.saveButton.active = home && this.menu.canRename() && !cleaned.isEmpty() && !cleaned.equals(this.menu.home().name());
-		this.saveButton.setTooltip(!home
-			? Tooltip.create(Component.translatable("gui.townsfolk.town_center.rename_elsewhere"))
-			: this.menu.canRename() ? null : Tooltip.create(Component.translatable("gui.townsfolk.town_center.rename_locked")));
+		this.saveButton.active = this.canRenameHere() && !cleaned.isEmpty() && !cleaned.equals(this.menu.home().name());
 	}
 
 	private void saveName() {
@@ -330,6 +335,10 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		TownCenterMenu.TownView town = this.current();
 		if (town == null) {
 			return;
+		}
+
+		if (!this.canRenameHere()) {
+			graphics.text(this.font, town.name(), this.titleLabelX, this.titleLabelY, Panels.TEXT, false);
 		}
 
 		int reputation = town.reputation();
