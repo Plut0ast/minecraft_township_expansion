@@ -16,16 +16,20 @@ import net.minecraft.world.entity.player.Player;
 
 /**
  * Orders a Trusted player can give a town's villager, like sitting a dog: wander (normal AI),
- * stay (stand still) or follow (walk after the player who gave the order).
+ * stay (stand still), follow (walk after the player who gave the order) or, for farmers only,
+ * farm (see {@link FarmWork}).
  */
 public final class VillagerCommands {
 	public enum Command {
-		WANDER, STAY, FOLLOW;
+		WANDER, STAY, FOLLOW, FARM;
 
 		public static final Codec<Command> CODEC = Codec.STRING.xmap(Command::valueOf, Command::name);
 
-		public Command next() {
-			return values()[(this.ordinal() + 1) % values().length];
+		/** The next order in the cycle; Farm is skipped for anyone who is not a farmer. */
+		public Command next(AbstractVillager villager) {
+			Command next = values()[(this.ordinal() + 1) % values().length];
+			boolean farmer = villager instanceof Villager v && FarmWork.isFarmer(v);
+			return next == FARM && !farmer ? WANDER : next;
 		}
 	}
 
@@ -71,7 +75,16 @@ public final class VillagerCommands {
 
 	/** Moves the villager to its next order; following always follows whoever clicked. */
 	public static void cycle(Player player, AbstractVillager villager) {
-		Command next = commandOf(villager).next();
+		Command previous = commandOf(villager);
+		Command next = previous.next(villager);
+		if (villager instanceof Villager v) {
+			if (previous == Command.FARM) {
+				FarmWork.stop(v);
+			}
+			if (next == Command.FARM) {
+				FarmWork.start(v);
+			}
+		}
 		if (next == Command.WANDER) {
 			villager.removeAttached(ModRegistry.COMMAND);
 			villager.removeAttached(ModRegistry.COMMAND_OWNER);
@@ -87,6 +100,11 @@ public final class VillagerCommands {
 	public static void afterBrainTick(Villager villager, ServerLevel level) {
 		Command command = commandOf(villager);
 		if (command == Command.WANDER || villager.isSleeping()) {
+			return;
+		}
+
+		if (command == Command.FARM) {
+			FarmWork.tick(villager, level);
 			return;
 		}
 

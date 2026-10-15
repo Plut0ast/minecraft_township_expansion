@@ -99,6 +99,11 @@ public final class ModRegistry {
 		.persistent(TownExile.Exile.CODEC)
 		.buildAndRegister(Townsfolk.id("exile"));
 
+	/** Where a farmer was given the Farming order; it farms the farmland around this spot. */
+	public static final AttachmentType<BlockPos> FARM_ANCHOR = AttachmentRegistry.<BlockPos>builder()
+		.persistent(BlockPos.CODEC)
+		.buildAndRegister(Townsfolk.id("farm_anchor"));
+
 	private ModRegistry() {
 	}
 
