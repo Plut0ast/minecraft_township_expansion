@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "townsfolk",
+  "version": "${version}",
+  "name": "Townsfolk",
+  "description": "Village overhaul: every village gets a Town Center, every villager gets a name, and villagers have an equipment screen.",
+  "authors": [
+    "dan5aun44"
+  ],
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.townsfolk.Townsfolk"
+    ],
+    "client": [
+      "com.townsfolk.client.TownsfolkClient"
+    ]
+  },
+  "mixins": [
+    "townsfolk.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

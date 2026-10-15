@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "townsfolk:block/town_center_top",
+    "bottom": "townsfolk:block/town_center_bottom",
+    "side": "townsfolk:block/town_center_side",
+    "particle": "townsfolk:block/town_center_side"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "block.townsfolk.town_center": "Town Center",
+  "container.townsfolk.town_center": "Town Center",
+  "gui.townsfolk.town_center.population": "Population: %s",
+  "gui.townsfolk.town_center.empty": "No villagers yet",
+  "gui.townsfolk.villager.title": "Villager",
+  "gui.townsfolk.villager.hand": "Hand",
+  "gui.townsfolk.villager.trade": "Trade",
+  "gui.townsfolk.villager.no_trades": "This villager has nothing to trade"
+}

@@ -1,0 +1,84 @@
+package com.townsfolk;
+
+import com.mojang.serialization.Codec;
+import com.townsfolk.block.TownCenterBlock;
+import com.townsfolk.block.TownCenterBlockEntity;
+import com.townsfolk.menu.TownCenterMenu;
+import com.townsfolk.menu.VillagerMenu;
+import java.util.Set;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
+
+public final class ModRegistry {
+	private static final ResourceKey<Block> TOWN_CENTER_BLOCK_KEY = ResourceKey.create(Registries.BLOCK, Townsfolk.id("town_center"));
+	private static final ResourceKey<Item> TOWN_CENTER_ITEM_KEY = ResourceKey.create(Registries.ITEM, Townsfolk.id("town_center"));
+
+	public static final Block TOWN_CENTER = Registry.register(
+		BuiltInRegistries.BLOCK,
+		TOWN_CENTER_BLOCK_KEY,
+		new TownCenterBlock(BlockBehaviour.Properties.of()
+			.setId(TOWN_CENTER_BLOCK_KEY)
+			.mapColor(MapColor.WOOD)
+			.strength(2.5F)
+			.sound(SoundType.WOOD))
+	);
+
+	public static final Item TOWN_CENTER_ITEM = Registry.register(
+		BuiltInRegistries.ITEM,
+		TOWN_CENTER_ITEM_KEY,
+		new BlockItem(TOWN_CENTER, new Item.Properties().setId(TOWN_CENTER_ITEM_KEY).useBlockDescriptionPrefix())
+	);
+
+	public static final BlockEntityType<TownCenterBlockEntity> TOWN_CENTER_BLOCK_ENTITY = Registry.register(
+		BuiltInRegistries.BLOCK_ENTITY_TYPE,
+		Townsfolk.id("town_center"),
+		new BlockEntityType<>(TownCenterBlockEntity::new, Set.of(TOWN_CENTER))
+	);
+
+	public static final ExtendedMenuType<TownCenterMenu, TownCenterMenu.Data> TOWN_CENTER_MENU = Registry.register(
+		BuiltInRegistries.MENU,
+		Townsfolk.id("town_center"),
+		new ExtendedMenuType<>(TownCenterMenu::new, TownCenterMenu.Data.STREAM_CODEC)
+	);
+
+	public static final ExtendedMenuType<VillagerMenu, VillagerMenu.Data> VILLAGER_MENU = Registry.register(
+		BuiltInRegistries.MENU,
+		Townsfolk.id("villager"),
+		new ExtendedMenuType<>(VillagerMenu::new, VillagerMenu.Data.STREAM_CODEC)
+	);
+
+	/** Position of the Town Center this villager belongs to. Once set it never changes. */
+	public static final AttachmentType<BlockPos> TOWN = AttachmentRegistry.<BlockPos>builder()
+		.persistent(BlockPos.CODEC)
+		.buildAndRegister(Townsfolk.id("town"));
+
+	/** True when the villager's hand item was given by a player, so villager AI must not replace it. */
+	public static final AttachmentType<Boolean> HAND_OWNED = AttachmentRegistry.<Boolean>builder()
+		.persistent(Codec.BOOL)
+		.syncWith(ByteBufCodecs.BOOL, AttachmentSyncPredicate.all())
+		.buildAndRegister(Townsfolk.id("hand_owned"));
+
+	private ModRegistry() {
+	}
+
+	public static void init() {
+		CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(output -> output.accept(TOWN_CENTER_ITEM));
+	}
+}

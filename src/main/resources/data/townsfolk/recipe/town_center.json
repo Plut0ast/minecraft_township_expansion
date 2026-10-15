@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "m": "minecraft:map",
+    "o": "minecraft:diamond",
+    "x": "#minecraft:planks"
+  },
+  "pattern": [
+    " m ",
+    "oxo",
+    "xxx"
+  ],
+  "result": {
+    "id": "townsfolk:town_center"
+  }
+}
