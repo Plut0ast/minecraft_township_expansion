@@ -4,6 +4,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.fabric.api.client.rendering.v1.RenderStateDataKey;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.minecraft.client.model.geom.builders.MeshTransformer;
 import net.minecraft.client.model.monster.zombie.BabyZombieVillagerModel;
 import net.minecraft.client.model.monster.zombie.ZombieVillagerModel;
 import net.minecraft.client.model.npc.VillagerModel;
@@ -25,12 +27,17 @@ import net.minecraft.world.item.equipment.Equippable;
 
 /**
  * Draws armour on villagers. Villagers share their body shape with zombie villagers, so this reuses
- * the zombie villager armour models, posed from the villager's own render state. The armour's sleeves
- * are hidden because villagers keep their arms crossed.
+ * the zombie villager armour models, scaled to villager size and posed from the villager's own render
+ * state. The armour's sleeves are hidden because villagers keep their arms crossed; the robe and hat
+ * underneath are hidden by {@code VillagerModelMixin}.
  */
 public class VillagerArmorLayer extends RenderLayer<VillagerRenderState, VillagerModel> {
 	/** Armour pose and items for one villager this frame; absent when it wears no armour. */
 	public static final RenderStateDataKey<ZombieVillagerRenderState> ARMOR = RenderStateDataKey.create(() -> "townsfolk:villager_armor");
+
+	private static final MeshTransformer VILLAGER_SCALE = MeshTransformer.scaling(0.9375F);
+	private static final CubeDeformation INNER_DEFORMATION = new CubeDeformation(0.5F);
+	private static final CubeDeformation OUTER_DEFORMATION = new CubeDeformation(1.0F);
 
 	private static final EquipmentSlot[] ARMOR_SLOTS = {EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.HEAD};
 
@@ -40,7 +47,9 @@ public class VillagerArmorLayer extends RenderLayer<VillagerRenderState, Village
 
 	public VillagerArmorLayer(RenderLayerParent<VillagerRenderState, VillagerModel> parent, EntityRendererProvider.Context context) {
 		super(parent);
-		this.models = hideSleeves(ArmorModelSet.bake(ModelLayers.ZOMBIE_VILLAGER_ARMOR, context.getModelSet(), ZombieVillagerModel::new));
+		// Adult villagers are drawn at 93.75% of the zombie villager size, so the armour is shrunk to match.
+		this.models = hideSleeves(ZombieVillagerModel.createArmorLayerSet(INNER_DEFORMATION, OUTER_DEFORMATION)
+			.map(layer -> new ZombieVillagerModel<ZombieVillagerRenderState>(layer.apply(VILLAGER_SCALE).bakeRoot())));
 		this.babyModels = hideSleeves(ArmorModelSet.bake(ModelLayers.ZOMBIE_VILLAGER_BABY_ARMOR, context.getModelSet(), BabyZombieVillagerModel::new));
 		this.equipmentRenderer = context.getEquipmentRenderer();
 	}
