@@ -8,5 +8,13 @@
   "gui.townsfolk.villager.trade": "Trade",
   "gui.townsfolk.villager.no_trades": "This villager has nothing to trade",
   "message.townsfolk.town_center.no_town_nearby": "No other town within %s blocks. This Town Center starts a new town.",
-  "message.townsfolk.town_center.town_nearby": "Nearest town: %s blocks away at %s, %s, %s (%s villagers). Villagers here without a town will join this new town instead; that town keeps its current villagers."
+  "message.townsfolk.town_center.town_nearby": "Nearest town: %s blocks away at %s, %s, %s (%s villagers). Villagers here without a town will join this new town instead; that town keeps its current villagers.",
+  "gui.townsfolk.town_center.reputation": "Reputation: %s (%s)",
+  "gui.townsfolk.town_center.next_rank": "%s to %s",
+  "gui.townsfolk.town_center.max_rank": "Highest rank",
+  "rank.townsfolk.stranger": "Stranger",
+  "rank.townsfolk.visitor": "Visitor",
+  "rank.townsfolk.friend": "Friend",
+  "rank.townsfolk.trusted": "Trusted",
+  "rank.townsfolk.hero": "Hero"
 }

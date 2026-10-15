@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.town.TownCenters;
+import com.townsfolk.town.TownReputation;
 import com.townsfolk.town.VillagerNames;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -98,11 +99,12 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		}
 	}
 
-	/** When this Town Center is broken, its villagers become free to join another town. */
+	/** When this Town Center is broken, its villagers become free to join another town and its reputation is lost. */
 	@Override
 	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
 		super.preRemoveSideEffects(pos, state);
 		if (this.level instanceof ServerLevel serverLevel) {
+			TownReputation.get(serverLevel).clear(pos);
 			AABB area = new AABB(pos).inflate(CLAIM_RADIUS * 2);
 			for (Villager villager : serverLevel.getEntitiesOfClass(Villager.class, area, v -> pos.equals(v.getAttached(ModRegistry.TOWN)))) {
 				villager.removeAttached(ModRegistry.TOWN);
@@ -147,11 +149,18 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 
 	@Override
 	public TownCenterMenu.Data getScreenOpeningData(ServerPlayer player) {
-		return new TownCenterMenu.Data(this.worldPosition, this.residentNames());
+		return this.menuData(player);
+	}
+
+	private TownCenterMenu.Data menuData(Player player) {
+		int reputation = this.level instanceof ServerLevel serverLevel
+			? TownReputation.get(serverLevel).get(this.worldPosition, player.getUUID())
+			: 0;
+		return new TownCenterMenu.Data(this.worldPosition, this.residentNames(), reputation);
 	}
 
 	@Override
 	public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
-		return new TownCenterMenu(containerId, inventory, new TownCenterMenu.Data(this.worldPosition, this.residentNames()));
+		return new TownCenterMenu(containerId, inventory, this.menuData(player));
 	}
 }

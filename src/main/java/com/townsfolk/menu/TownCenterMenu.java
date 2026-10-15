@@ -11,12 +11,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
-/** Read-only menu listing the residents of a town. It has no slots. */
+/** Read-only menu listing the residents of a town and the viewer's reputation with it. It has no slots. */
 public class TownCenterMenu extends AbstractContainerMenu {
-	public record Data(BlockPos pos, List<String> residents) {
+	/** {@code reputation} is the viewing player's reputation with this town. */
+	public record Data(BlockPos pos, List<String> residents, int reputation) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			BlockPos.STREAM_CODEC, Data::pos,
 			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), Data::residents,
+			ByteBufCodecs.VAR_INT, Data::reputation,
 			Data::new
 		);
 	}
@@ -30,6 +32,10 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	public List<String> residents() {
 		return this.data.residents();
+	}
+
+	public int reputation() {
+		return this.data.reputation();
 	}
 
 	@Override
