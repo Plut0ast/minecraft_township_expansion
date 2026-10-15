@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.TownCenterMenu;
+import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownCenters;
 import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownRegistry;
@@ -23,6 +24,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -149,6 +151,9 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			}
 			if (town == null && this.worldPosition.equals(TownCenters.townFor(serverLevel, member.blockPosition()))) {
 				member.setAttached(ModRegistry.TOWN, this.worldPosition);
+				if (member instanceof Villager villager) {
+					TownArrival.start(villager, serverLevel);
+				}
 				town = this.worldPosition;
 			}
 

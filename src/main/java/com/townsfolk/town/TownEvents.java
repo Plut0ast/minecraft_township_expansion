@@ -63,6 +63,7 @@ public final class TownEvents {
 
 		ServerTickEvents.END_LEVEL_TICK.register(TownCenters::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(TownGuards::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(TownArrival::tick);
 
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamage, damageTaken, blocked) -> {
 			if (damageTaken > 0.0F) {

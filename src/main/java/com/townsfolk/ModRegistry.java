@@ -88,6 +88,11 @@ public final class ModRegistry {
 		.persistent(UUIDUtil.CODEC)
 		.buildAndRegister(Townsfolk.id("command_owner"));
 
+	/** Set while a villager that just joined a town is walking to its Town Center: the game time to give up at. */
+	public static final AttachmentType<Long> ARRIVAL_DEADLINE = AttachmentRegistry.<Long>builder()
+		.persistent(Codec.LONG)
+		.buildAndRegister(Townsfolk.id("arrival_deadline"));
+
 	private ModRegistry() {
 	}
 
