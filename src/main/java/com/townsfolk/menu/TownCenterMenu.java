@@ -1,6 +1,8 @@
 package com.townsfolk.menu;
 
 import com.townsfolk.ModRegistry;
+import com.townsfolk.block.TownCenterBlockEntity;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -11,60 +13,105 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
-/** Read-only menu listing the residents of a town and the viewer's reputation with it. It has no slots. */
+/**
+ * Read-only menu for browsing towns. The first town is the one whose Town Center was opened; the rest
+ * follow, nearest first. It has no slots.
+ */
 public class TownCenterMenu extends AbstractContainerMenu {
+	public static final int BUTTON_JOIN = 0;
+
+	/** One town as shown in the screen; {@code reputation} is the viewer's reputation with it. */
+	public record TownView(BlockPos pos, String name, List<String> villagers, List<String> golems, List<String> players, int reputation) {
+		public static final StreamCodec<RegistryFriendlyByteBuf, TownView> STREAM_CODEC = StreamCodec.composite(
+			BlockPos.STREAM_CODEC, TownView::pos,
+			ByteBufCodecs.STRING_UTF8, TownView::name,
+			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::villagers,
+			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::golems,
+			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::players,
+			ByteBufCodecs.VAR_INT, TownView::reputation,
+			TownView::new
+		);
+
+		public TownView withName(String name) {
+			return new TownView(this.pos, name, this.villagers, this.golems, this.players, this.reputation);
+		}
+
+		public TownView withPlayer(String player) {
+			List<String> players = new ArrayList<>(this.players);
+			players.add(player);
+			return new TownView(this.pos, this.name, this.villagers, this.golems, players, this.reputation);
+		}
+	}
+
 	/**
-	 * {@code reputation} is the viewing player's reputation with this town; {@code canRename} is
-	 * whether that reputation is high enough (Trusted) to rename it.
+	 * {@code canRename}: the viewer is Trusted by the opened town. {@code canJoin}: the viewer is a Hero
+	 * of the opened town and not yet one of its players.
 	 */
-	public record Data(BlockPos pos, String townName, List<String> residents, List<String> golems, int reputation, boolean canRename) {
+	public record Data(List<TownView> towns, boolean canRename, boolean canJoin) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
-			BlockPos.STREAM_CODEC, Data::pos,
-			ByteBufCodecs.STRING_UTF8, Data::townName,
-			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), Data::residents,
-			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), Data::golems,
-			ByteBufCodecs.VAR_INT, Data::reputation,
+			TownView.STREAM_CODEC.apply(ByteBufCodecs.list()), Data::towns,
 			ByteBufCodecs.BOOL, Data::canRename,
+			ByteBufCodecs.BOOL, Data::canJoin,
 			Data::new
 		);
 	}
 
-	private final Data data;
-	private String townName;
+	private final List<TownView> towns;
+	private final boolean canRename;
+	private boolean canJoin;
 
 	public TownCenterMenu(int containerId, Inventory inventory, Data data) {
 		super(ModRegistry.TOWN_CENTER_MENU, containerId);
-		this.data = data;
-		this.townName = data.townName();
+		this.towns = new ArrayList<>(data.towns());
+		this.canRename = data.canRename();
+		this.canJoin = data.canJoin();
+	}
+
+	/** The town whose Town Center was opened. */
+	public TownView home() {
+		return this.towns.getFirst();
 	}
 
 	public BlockPos pos() {
-		return this.data.pos();
+		return this.home().pos();
 	}
 
-	public String townName() {
-		return this.townName;
+	public List<TownView> towns() {
+		return this.towns;
+	}
+
+	public boolean canRename() {
+		return this.canRename;
+	}
+
+	public boolean canJoin() {
+		return this.canJoin;
 	}
 
 	/** Client side: show a saved rename straight away rather than waiting to reopen the menu. */
 	public void setTownName(String townName) {
-		this.townName = townName;
+		this.towns.set(0, this.home().withName(townName));
 	}
 
-	public boolean canRename() {
-		return this.data.canRename();
+	/** Client side: show the viewer as a player of the opened town straight after joining. */
+	public void markJoined(String playerName) {
+		this.towns.set(0, this.home().withPlayer(playerName));
+		this.canJoin = false;
 	}
 
-	public List<String> residents() {
-		return this.data.residents();
-	}
-
-	public List<String> golems() {
-		return this.data.golems();
-	}
-
-	public int reputation() {
-		return this.data.reputation();
+	@Override
+	public boolean clickMenuButton(Player player, int buttonId) {
+		if (buttonId != BUTTON_JOIN || !this.canJoin) {
+			return false;
+		}
+		// Re-check on the server: only a Hero who is not already a member may join.
+		if (!player.level().isClientSide()) {
+			if (!(player.level().getBlockEntity(this.pos()) instanceof TownCenterBlockEntity town) || !town.join(player)) {
+				return false;
+			}
+			this.canJoin = false;
+		}
+		return true;
 	}
 
 	@Override
@@ -74,7 +121,7 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean stillValid(Player player) {
-		return player.level().getBlockState(this.data.pos()).is(ModRegistry.TOWN_CENTER)
-			&& player.isWithinBlockInteractionRange(this.data.pos(), 4.0);
+		return player.level().getBlockState(this.pos()).is(ModRegistry.TOWN_CENTER)
+			&& player.isWithinBlockInteractionRange(this.pos(), 4.0);
 	}
 }

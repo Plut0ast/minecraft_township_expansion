@@ -1,12 +1,12 @@
 {
   "block.townsfolk.town_center": "Town Center",
   "container.townsfolk.town_center": "Town Center",
-  "gui.townsfolk.town_center.population": "☺ %s  ⚙ %s",
+  "gui.townsfolk.town_center.population": "☺ %s  ⚙ %s  ☻ %s",
   "gui.townsfolk.town_center.empty": "No villagers yet",
   "gui.townsfolk.villager.hand": "Hand",
   "gui.townsfolk.villager.trade": "Trade",
   "gui.townsfolk.villager.no_trades": "This villager has nothing to trade",
-  "gui.townsfolk.town_center.reputation": "Reputation: %s (%s)",
+  "gui.townsfolk.town_center.reputation": "%s (%s rep)",
   "gui.townsfolk.town_center.next_rank": "%s to %s",
   "gui.townsfolk.town_center.max_rank": "Highest rank",
   "rank.townsfolk.stranger": "Stranger",
@@ -28,5 +28,16 @@
   "gui.townsfolk.villager.unemployed": "Unemployed",
   "gui.townsfolk.villager.child": "Child",
   "message.townsfolk.town_center.founded_alone": "Founded %s · No other town nearby",
-  "message.townsfolk.town_center.founded_near": "Founded %s · Nearest town: %s, %s blocks away"
+  "message.townsfolk.town_center.founded_near": "Founded %s · Nearest town: %s, %s blocks away",
+  "gui.townsfolk.town_center.filter_players": "Show only towns with players",
+  "gui.townsfolk.town_center.join": "Join",
+  "gui.townsfolk.town_center.member": "Member",
+  "gui.townsfolk.town_center.join_tooltip": "Join this town as one of its players",
+  "gui.townsfolk.town_center.join_locked": "Become a Hero of this town to join it",
+  "gui.townsfolk.town_center.join_member": "You are one of this town's players",
+  "gui.townsfolk.town_center.join_elsewhere": "Visit this town's Town Center to join it",
+  "gui.townsfolk.town_center.rename_elsewhere": "Visit this town's Town Center to rename it",
+  "gui.townsfolk.town_center.no_player_towns": "No towns with players",
+  "gui.townsfolk.town_center.here": "This town",
+  "gui.townsfolk.town_center.distance": "%s blocks away"
 }

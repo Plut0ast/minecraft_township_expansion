@@ -41,8 +41,13 @@ public class TownCenterBlock extends BaseEntityBlock {
 			return;
 		}
 
+		String founded = "";
+		if (level.getBlockEntity(pos) instanceof TownCenterBlockEntity town) {
+			town.found(player);
+			founded = town.townName();
+		}
+
 		// Shown above the hotbar rather than in chat.
-		String founded = level.getBlockEntity(pos) instanceof TownCenterBlockEntity town ? town.townName() : "";
 		TownCenterBlockEntity nearest = TownCenters.nearestOtherTown(serverLevel, pos);
 		Component message;
 		if (nearest == null) {

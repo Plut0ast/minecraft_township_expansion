@@ -6,9 +6,11 @@ import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.town.TownCenters;
 import com.townsfolk.town.TownNames;
+import com.townsfolk.town.TownRegistry;
 import com.townsfolk.town.TownReputation;
 import com.townsfolk.town.VillagerNames;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,13 +82,47 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	public void setTownName(String townName) {
 		this.townName = townName;
 		this.setChanged();
+		this.syncRegistry();
+	}
+
+	/** Keeps this town's entry in the dimension's {@link TownRegistry} current, for browsing from other towns. */
+	private void syncRegistry() {
+		if (this.level instanceof ServerLevel serverLevel) {
+			TownRegistry.get(serverLevel).update(this.worldPosition, this.townName(), this.names(false), this.names(true));
+		}
+	}
+
+	private TownReputation.Rank rankOf(Player player) {
+		return this.level instanceof ServerLevel serverLevel
+			? TownReputation.Rank.of(TownReputation.get(serverLevel).get(this.worldPosition, player.getUUID()))
+			: TownReputation.Rank.STRANGER;
+	}
+
+	private boolean isMember(Player player) {
+		return this.level instanceof ServerLevel serverLevel && TownRegistry.get(serverLevel).isMember(this.worldPosition, player.getUUID());
+	}
+
+	/** Whoever places a Town Center founds the town and becomes its first player. */
+	public void found(Player founder) {
+		if (this.level instanceof ServerLevel serverLevel) {
+			this.syncRegistry();
+			TownRegistry.get(serverLevel).addMember(this.worldPosition, founder.getUUID(), founder.getName().getString());
+		}
+	}
+
+	/** Heroes of this town may join it as players. Returns whether the player joined. */
+	public boolean join(Player player) {
+		if (!(this.level instanceof ServerLevel serverLevel) || this.rankOf(player) != TownReputation.Rank.HERO || this.isMember(player)) {
+			return false;
+		}
+		this.syncRegistry();
+		TownRegistry.get(serverLevel).addMember(this.worldPosition, player.getUUID(), player.getName().getString());
+		return true;
 	}
 
 	/** Trusted (or better) players may rename the town and give its villagers orders. */
 	public boolean isTrustedBy(Player player) {
-		return this.level instanceof ServerLevel serverLevel
-			&& TownReputation.Rank.of(TownReputation.get(serverLevel).get(this.worldPosition, player.getUUID())).ordinal()
-				>= TownReputation.Rank.TRUSTED.ordinal();
+		return this.rankOf(player).ordinal() >= TownReputation.Rank.TRUSTED.ordinal();
 	}
 
 	/** Newer towns sort higher; a town that has not ticked yet was placed just now, so it is the newest. */
@@ -127,6 +163,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		if (changed) {
 			this.setChanged();
 		}
+		this.syncRegistry();
 	}
 
 	/** When this Town Center is broken, its members become free to join another town and its reputation is lost. */
@@ -135,6 +172,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		super.preRemoveSideEffects(pos, state);
 		if (this.level instanceof ServerLevel serverLevel) {
 			TownReputation.get(serverLevel).clear(pos);
+			TownRegistry.get(serverLevel).remove(pos);
 			AABB area = new AABB(pos).inflate(CLAIM_RADIUS * 2);
 			for (Mob member : serverLevel.getEntitiesOfClass(Mob.class, area, m -> pos.equals(m.getAttached(ModRegistry.TOWN)))) {
 				member.removeAttached(ModRegistry.TOWN);
@@ -191,11 +229,30 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		return this.menuData(player);
 	}
 
+	/** This town first, then every other town in the dimension, nearest first. */
 	private TownCenterMenu.Data menuData(Player player) {
-		int reputation = this.level instanceof ServerLevel serverLevel
-			? TownReputation.get(serverLevel).get(this.worldPosition, player.getUUID())
-			: 0;
-		return new TownCenterMenu.Data(this.worldPosition, this.townName(), this.names(false), this.names(true), reputation, this.isTrustedBy(player));
+		List<TownCenterMenu.TownView> towns = new ArrayList<>();
+		if (this.level instanceof ServerLevel serverLevel) {
+			this.syncRegistry();
+			TownReputation reputation = TownReputation.get(serverLevel);
+			Map<BlockPos, TownRegistry.Town> all = TownRegistry.get(serverLevel).all();
+			List<BlockPos> order = new ArrayList<>(all.keySet());
+			order.remove(this.worldPosition);
+			order.sort(Comparator.comparingDouble(pos -> pos.distSqr(this.worldPosition)));
+			order.addFirst(this.worldPosition);
+			for (BlockPos pos : order) {
+				TownRegistry.Town town = all.get(pos);
+				if (town != null) {
+					towns.add(new TownCenterMenu.TownView(pos, town.name(), town.villagers(), town.golems(),
+						new ArrayList<>(town.players().values()), reputation.get(pos, player.getUUID())));
+				}
+			}
+		}
+		if (towns.isEmpty()) {
+			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.names(true), List.of(), 0));
+		}
+		boolean canJoin = this.rankOf(player) == TownReputation.Rank.HERO && !this.isMember(player);
+		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin);
 	}
 
 	@Override
