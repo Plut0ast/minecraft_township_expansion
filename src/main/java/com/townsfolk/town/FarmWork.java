@@ -35,8 +35,8 @@ import org.jspecify.annotations.Nullable;
  * The Farming order for farmers: during the day, harvest ripe crops around where the order was given,
  * replant them, take the harvest to the closest chest (or barrel), and fetch seeds from it when out.
  * <p>
- * The harvest goes into the farmer's hand first, then its pockets. How many pocket slots a farmer
- * uses grows with the size of its farm ({@link #capacity}).
+ * The harvest goes into the farmer's hand first, then its pockets. Only crops and seeds are taken to
+ * the chest, so the farmer keeps any bread it carries.
  */
 public final class FarmWork {
 	/** How far from where the order was given the farmer looks for farmland. */
@@ -49,9 +49,6 @@ public final class FarmWork {
 	private static final double REACH = 1.6;
 	private static final float WALK_SPEED = 0.5F;
 	private static final int THINK_INTERVAL_TICKS = 20;
-	/** One extra pocket slot for every this many farmland blocks, up to a villager's 8 pockets. */
-	private static final int FARMLAND_PER_SLOT = 16;
-	private static final int MAX_SLOTS = 8;
 
 	private enum Action { HARVEST, PLANT, DEPOSIT, FETCH_SEEDS }
 
@@ -63,17 +60,9 @@ public final class FarmWork {
 	private FarmWork() {
 	}
 
-	/** Pocket slots this farmer uses: 1, plus one per {@link #FARMLAND_PER_SLOT} farmland around its farm, up to 8. */
+	/** Farmers use all of their pockets. */
 	public static int capacity(ServerLevel level, Villager villager) {
-		BlockPos center = villager.getAttachedOrElse(ModRegistry.FARM_ANCHOR, villager.blockPosition());
-		int farmland = 0;
-		for (BlockPos pos : BlockPos.betweenClosed(
-			center.offset(-FARM_RADIUS, -FARM_HEIGHT, -FARM_RADIUS), center.offset(FARM_RADIUS, FARM_HEIGHT, FARM_RADIUS))) {
-			if (level.getBlockState(pos).getBlock() instanceof FarmlandBlock) {
-				farmland++;
-			}
-		}
-		return Math.min(MAX_SLOTS, 1 + farmland / FARMLAND_PER_SLOT);
+		return villager.getInventory().getContainerSize();
 	}
 
 	public static boolean isFarmer(Villager villager) {
@@ -239,7 +228,7 @@ public final class FarmWork {
 		SimpleContainer inventory = villager.getInventory();
 		for (int i = 0; i < inventory.getContainerSize(); i++) {
 			ItemStack stack = inventory.getItem(i);
-			if (!stack.isEmpty() && !isSeed(stack)) {
+			if (isProduce(stack) && !isSeed(stack)) {
 				return true;
 			}
 		}
@@ -351,8 +340,8 @@ public final class FarmWork {
 		int seedsKept = 0;
 		for (int i = 0; i < inventory.getContainerSize(); i++) {
 			ItemStack stack = inventory.getItem(i);
-			if (stack.isEmpty()) {
-				continue;
+			if (!isProduce(stack)) {
+				continue; // bread and anything else the farmer carries stays with it
 			}
 			int keep = 0;
 			if (isSeed(stack)) {

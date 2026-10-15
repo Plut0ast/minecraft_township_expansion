@@ -21,17 +21,21 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * membership (founders and Heroes who joined) lives only here.
  */
 public class TownRegistry extends SavedData {
-	/** A town as last seen. {@code players} maps member UUIDs to the names they had when they joined. */
-	public record Town(String name, List<String> villagers, List<String> golems, Map<UUID, String> players) {
+	/**
+	 * A town as last seen. {@code villagerJobs} lines up with {@code villagers} (translation keys);
+	 * {@code players} maps member UUIDs to the names they had when they joined.
+	 */
+	public record Town(String name, List<String> villagers, List<String> villagerJobs, List<String> golems, Map<UUID, String> players) {
 		static final Codec<Town> CODEC = RecordCodecBuilder.create(i -> i.group(
 			Codec.STRING.fieldOf("name").forGetter(Town::name),
 			Codec.STRING.listOf().fieldOf("villagers").forGetter(Town::villagers),
+			Codec.STRING.listOf().optionalFieldOf("villager_jobs", List.of()).forGetter(Town::villagerJobs),
 			Codec.STRING.listOf().fieldOf("golems").forGetter(Town::golems),
 			Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.STRING).fieldOf("players").forGetter(Town::players)
 		).apply(i, Town::new));
 
 		Town withPlayers(Map<UUID, String> players) {
-			return new Town(this.name, this.villagers, this.golems, players);
+			return new Town(this.name, this.villagers, this.villagerJobs, this.golems, players);
 		}
 	}
 
@@ -48,7 +52,8 @@ public class TownRegistry extends SavedData {
 
 	private TownRegistry(Map<String, Town> towns) {
 		towns.forEach((key, town) -> this.towns.put(key, new Town(
-			town.name(), List.copyOf(town.villagers()), List.copyOf(town.golems()), new LinkedHashMap<>(town.players()))));
+			town.name(), List.copyOf(town.villagers()), List.copyOf(town.villagerJobs()), List.copyOf(town.golems()),
+			new LinkedHashMap<>(town.players()))));
 	}
 
 	public static TownRegistry get(ServerLevel level) {
@@ -67,9 +72,10 @@ public class TownRegistry extends SavedData {
 	}
 
 	/** Records a Town Center's current name and residents; player membership is kept. */
-	public void update(BlockPos pos, String name, List<String> villagers, List<String> golems) {
+	public void update(BlockPos pos, String name, List<String> villagers, List<String> villagerJobs, List<String> golems) {
 		Town old = this.towns.get(key(pos));
-		Town updated = new Town(name, List.copyOf(villagers), List.copyOf(golems), old == null ? new LinkedHashMap<>() : old.players());
+		Town updated = new Town(name, List.copyOf(villagers), List.copyOf(villagerJobs), List.copyOf(golems),
+			old == null ? new LinkedHashMap<>() : old.players());
 		if (!updated.equals(old)) {
 			this.towns.put(key(pos), updated);
 			this.setDirty();
@@ -86,7 +92,7 @@ public class TownRegistry extends SavedData {
 		Map<UUID, String> players = new LinkedHashMap<>(town == null ? Map.of() : town.players());
 		players.put(player, playerName);
 		this.towns.put(key(pos), town == null
-			? new Town("", List.of(), List.of(), players)
+			? new Town("", List.of(), List.of(), List.of(), players)
 			: town.withPlayers(players));
 		this.setDirty();
 	}

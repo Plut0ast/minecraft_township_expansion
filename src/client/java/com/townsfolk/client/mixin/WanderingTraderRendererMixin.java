@@ -1,5 +1,6 @@
 package com.townsfolk.client.mixin;
 
+import com.townsfolk.client.HeldWeapons;
 import com.townsfolk.client.VillagerArmorLayer;
 import net.minecraft.client.renderer.entity.WanderingTraderRenderer;
 import net.minecraft.client.renderer.entity.state.VillagerRenderState;
@@ -17,5 +18,6 @@ public abstract class WanderingTraderRendererMixin {
 	)
 	private void townsfolk$extractArmor(WanderingTrader trader, VillagerRenderState state, float partialTicks, CallbackInfo ci) {
 		VillagerArmorLayer.extract(trader, state);
+		HeldWeapons.extract(trader, state);
 	}
 }

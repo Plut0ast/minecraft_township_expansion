@@ -28,11 +28,14 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	public static final int BUTTON_REMOVE_FIRST = 100;
 
 	/** One town as shown in the screen; {@code reputation} is the viewer's reputation with it. */
-	public record TownView(BlockPos pos, String name, List<String> villagers, List<String> golems, List<String> players, int reputation) {
+	/** {@code villagerJobs} lines up with {@code villagers}: a translation key for each villager's job. */
+	public record TownView(BlockPos pos, String name, List<String> villagers, List<String> villagerJobs, List<String> golems,
+		List<String> players, int reputation) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, TownView> STREAM_CODEC = StreamCodec.composite(
 			BlockPos.STREAM_CODEC, TownView::pos,
 			ByteBufCodecs.STRING_UTF8, TownView::name,
 			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::villagers,
+			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::villagerJobs,
 			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::golems,
 			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::players,
 			ByteBufCodecs.VAR_INT, TownView::reputation,
@@ -40,19 +43,23 @@ public class TownCenterMenu extends AbstractContainerMenu {
 		);
 
 		public TownView withName(String name) {
-			return new TownView(this.pos, name, this.villagers, this.golems, this.players, this.reputation);
+			return new TownView(this.pos, name, this.villagers, this.villagerJobs, this.golems, this.players, this.reputation);
 		}
 
 		public TownView withoutVillager(int index) {
 			List<String> villagers = new ArrayList<>(this.villagers);
 			villagers.remove(index);
-			return new TownView(this.pos, this.name, villagers, this.golems, this.players, this.reputation);
+			List<String> jobs = new ArrayList<>(this.villagerJobs);
+			if (index < jobs.size()) {
+				jobs.remove(index);
+			}
+			return new TownView(this.pos, this.name, villagers, jobs, this.golems, this.players, this.reputation);
 		}
 
 		public TownView withPlayer(String player) {
 			List<String> players = new ArrayList<>(this.players);
 			players.add(player);
-			return new TownView(this.pos, this.name, this.villagers, this.golems, players, this.reputation);
+			return new TownView(this.pos, this.name, this.villagers, this.villagerJobs, this.golems, players, this.reputation);
 		}
 	}
 

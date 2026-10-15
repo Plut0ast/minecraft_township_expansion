@@ -6,6 +6,7 @@ import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownCenters;
+import com.townsfolk.town.TownEvents;
 import com.townsfolk.town.TownExile;
 import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownRegistry;
@@ -41,11 +42,13 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	public static final int CLAIM_RADIUS = 64;
 	private static final int CLAIM_INTERVAL_TICKS = 100;
 
-	private record Resident(UUID uuid, String name, boolean golem) {
+	/** {@code job} is a translation key for a villager's job (empty for golems). */
+	private record Resident(UUID uuid, String name, boolean golem, String job) {
 		static final Codec<Resident> CODEC = RecordCodecBuilder.create(i -> i.group(
 			UUIDUtil.CODEC.fieldOf("uuid").forGetter(Resident::uuid),
 			Codec.STRING.fieldOf("name").forGetter(Resident::name),
-			Codec.BOOL.optionalFieldOf("golem", false).forGetter(Resident::golem)
+			Codec.BOOL.optionalFieldOf("golem", false).forGetter(Resident::golem),
+			Codec.STRING.optionalFieldOf("job", "").forGetter(Resident::job)
 		).apply(i, Resident::new));
 	}
 
@@ -91,7 +94,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	/** Keeps this town's entry in the dimension's {@link TownRegistry} current, for browsing from other towns. */
 	private void syncRegistry() {
 		if (this.level instanceof ServerLevel serverLevel) {
-			TownRegistry.get(serverLevel).update(this.worldPosition, this.townName(), this.names(false), this.names(true));
+			TownRegistry.get(serverLevel).update(this.worldPosition, this.townName(), this.names(false), this.villagerJobs(), this.names(true));
 		}
 	}
 
@@ -161,7 +164,8 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			}
 
 			if (this.worldPosition.equals(town)) {
-				Resident resident = new Resident(member.getUUID(), VillagerNames.nameOf(member), member instanceof IronGolem);
+				String job = member instanceof Villager villager ? TownEvents.jobKey(villager) : "";
+				Resident resident = new Resident(member.getUUID(), VillagerNames.nameOf(member), member instanceof IronGolem, job);
 				if (!resident.equals(this.residents.put(member.getUUID(), resident))) {
 					changed = true;
 				}
@@ -197,6 +201,16 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		if (this.residents.remove(uuid) != null) {
 			this.setChanged();
 		}
+	}
+
+	private List<String> villagerJobs() {
+		List<String> jobs = new ArrayList<>();
+		for (Resident resident : this.residents.values()) {
+			if (!resident.golem()) {
+				jobs.add(resident.job());
+			}
+		}
+		return jobs;
 	}
 
 	private List<String> names(boolean golems) {
@@ -251,27 +265,29 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			for (BlockPos pos : order) {
 				TownRegistry.Town town = all.get(pos);
 				if (town != null) {
-					towns.add(new TownCenterMenu.TownView(pos, town.name(), town.villagers(), town.golems(),
+					towns.add(new TownCenterMenu.TownView(pos, town.name(), town.villagers(), town.villagerJobs(), town.golems(),
 						new ArrayList<>(town.players().values()), reputation.get(pos, player.getUUID())));
 				}
 			}
 		}
 		if (towns.isEmpty()) {
-			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.names(true), List.of(), 0));
+			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.villagerJobs(), this.names(true), List.of(), 0));
 		}
 		boolean canJoin = this.rankOf(player) == TownReputation.Rank.HERO && !this.isMember(player);
 		boolean canRemove = this.isTrustedBy(player) && this.isMember(player);
 		// The opened town's view must list villagers in the same order as these ids.
 		List<UUID> villagerIds = new ArrayList<>();
 		List<String> villagerNames = new ArrayList<>();
+		List<String> villagerJobs = new ArrayList<>();
 		for (Resident resident : this.residents.values()) {
 			if (!resident.golem()) {
 				villagerIds.add(resident.uuid());
 				villagerNames.add(resident.name());
+				villagerJobs.add(resident.job());
 			}
 		}
 		TownCenterMenu.TownView home = towns.getFirst();
-		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, home.golems(), home.players(), home.reputation()));
+		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, villagerJobs, home.golems(), home.players(), home.reputation()));
 		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin, canRemove, villagerIds);
 	}
 

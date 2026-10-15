@@ -7,13 +7,24 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /** Villager or wandering trader preview, name and job, armour + hand slots, an order button and a Trade button. */
 public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
+	private static final Identifier HEART_CONTAINER = Identifier.withDefaultNamespace("hud/heart/container");
+	private static final Identifier HEART_FULL = Identifier.withDefaultNamespace("hud/heart/full");
+	private static final Identifier HEART_HALF = Identifier.withDefaultNamespace("hud/heart/half");
+
+	private static final ItemStack FOOD_ICON = new ItemStack(Items.BREAD);
+
 	private float xMouse;
 	private Button commandButton;
 
@@ -79,11 +90,40 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		for (Slot slot : this.menu.slots) {
 			Panels.slot(graphics, x + slot.x - 1, y + slot.y - 1);
 		}
+		// Vanilla has no empty-slot icon for food, so an empty food slot shows a faded loaf of bread.
+		int food = this.menu.foodSlotIndex();
+		if (food >= 0 && !this.menu.slots.get(food).hasItem()) {
+			int fx = x + VillagerMenu.FOOD_X;
+			int fy = y + VillagerMenu.CARRY_Y;
+			graphics.item(FOOD_ICON, fx, fy);
+			graphics.fill(fx, fy, fx + 16, fy + 16, 0xB08B8B8B);
+		}
 
 		Panels.inset(graphics, x + 26, y + 17, 49, 71, 0xFF000000);
 		AbstractVillager villager = this.menu.villager();
 		if (villager != null) {
 			InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, x + 26, y + 17, x + 75, y + 88, 30, 0.0625F, this.xMouse, this.yMouse, villager);
+		}
+	}
+
+	/** The villager's health as vanilla hearts, top right, kept live from the client's copy of the villager. */
+	private void extractHearts(GuiGraphicsExtractor graphics) {
+		AbstractVillager villager = this.menu.villager();
+		if (villager == null) {
+			return;
+		}
+		int hearts = Mth.ceil(villager.getMaxHealth() / 2.0F);
+		int health = Mth.ceil(villager.getHealth());
+		int spacing = 8;
+		int startX = this.imageWidth - 8 - (hearts - 1) * spacing - 9;
+		for (int i = 0; i < hearts; i++) {
+			int hx = startX + i * spacing;
+			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HEART_CONTAINER, hx, 5, 9, 9);
+			if (health >= i * 2 + 2) {
+				graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HEART_FULL, hx, 5, 9, 9);
+			} else if (health == i * 2 + 1) {
+				graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HEART_HALF, hx, 5, 9, 9);
+			}
 		}
 	}
 
@@ -100,8 +140,10 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	@Override
 	public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
 		super.extractContents(graphics, mouseX, mouseY, a);
-		if (!this.menu.data().canEdit()) {
-			for (int i = 0; i < VillagerMenu.EQUIPMENT_SLOTS + this.menu.carrySlots(); i++) {
+		for (int i = 0; i < this.menu.playerStart(); i++) {
+			// Gear and pockets need Friend; the food slot only shuts out the town's Enemies.
+			boolean locked = i == this.menu.foodSlotIndex() ? !this.menu.data().canFeed() : !this.menu.data().canEdit();
+			if (locked) {
 				Slot slot = this.menu.slots.get(i);
 				int sx = this.leftPos + slot.x;
 				int sy = this.topPos + slot.y;
@@ -119,10 +161,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 			? Component.translatable("gui.townsfolk.villager.no_town")
 			: Component.translatable("gui.townsfolk.villager.town", data.townName());
 		graphics.text(this.font, this.fit(town, 68), 100, 31, 0xFF606060, false);
-		graphics.text(this.font, Component.translatable("gui.townsfolk.villager.hand"), 78, 62, Panels.TEXT, false);
-		if (this.menu.carrySlots() > 0) {
-			graphics.text(this.font, Component.translatable("gui.townsfolk.villager.carrying"), 8, VillagerMenu.CARRY_Y - 10, Panels.TEXT, false);
-		}
+		this.extractHearts(graphics);
 		graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, Panels.TEXT, false);
 	}
 }

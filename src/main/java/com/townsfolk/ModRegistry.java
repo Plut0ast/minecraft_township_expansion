@@ -24,6 +24,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -103,6 +104,16 @@ public final class ModRegistry {
 	public static final AttachmentType<BlockPos> FARM_ANCHOR = AttachmentRegistry.<BlockPos>builder()
 		.persistent(BlockPos.CODEC)
 		.buildAndRegister(Townsfolk.id("farm_anchor"));
+
+	/** A villager's food slot: eaten to heal, refilled by players or from farmers. */
+	public static final AttachmentType<ItemStack> FOOD = AttachmentRegistry.<ItemStack>builder()
+		.persistent(ItemStack.OPTIONAL_CODEC)
+		.buildAndRegister(Townsfolk.id("food"));
+
+	/** Set once a villager has been given its starting bread, so it is never given twice. */
+	public static final AttachmentType<Boolean> STARTING_FOOD_GIVEN = AttachmentRegistry.<Boolean>builder()
+		.persistent(Codec.BOOL)
+		.buildAndRegister(Townsfolk.id("starting_food_given"));
 
 	private ModRegistry() {
 	}

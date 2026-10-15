@@ -2,7 +2,6 @@
   "block.townsfolk.town_center": "Town Center",
   "container.townsfolk.town_center": "Town Center",
   "gui.townsfolk.town_center.empty": "No villagers yet",
-  "gui.townsfolk.villager.hand": "Hand",
   "gui.townsfolk.villager.trade": "Trade",
   "gui.townsfolk.villager.no_trades": "This villager has nothing to trade",
   "gui.townsfolk.town_center.reputation": "%s (%s)",
@@ -49,5 +48,5 @@
   "gui.townsfolk.town_center.villagers": "Villagers (%s)",
   "gui.townsfolk.town_center.golems": "Golems (%s)",
   "gui.townsfolk.villager.command.farm": "Farming",
-  "gui.townsfolk.villager.carrying": "Carrying"
+  "gui.townsfolk.villager.sentry": "Sentry"
 }

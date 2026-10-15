@@ -1,7 +1,9 @@
 package com.townsfolk.mixin;
 
+import com.townsfolk.town.Sentry;
 import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownExile;
+import com.townsfolk.town.VillagerFood;
 import com.townsfolk.town.VillagerCommands;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -16,8 +18,12 @@ public abstract class VillagerMixin {
 	@Inject(method = "customServerAiStep", at = @At("TAIL"))
 	private void townsfolk$applyCommand(ServerLevel level, CallbackInfo ci) {
 		Villager villager = (Villager) (Object) this;
+		if (Sentry.afterBrainTick(villager, level)) {
+			return;
+		}
 		VillagerCommands.afterBrainTick(villager, level);
 		TownArrival.afterBrainTick(villager, level);
 		TownExile.afterBrainTick(villager, level);
+		VillagerFood.afterBrainTick(villager, level);
 	}
 }

@@ -43,6 +43,9 @@ public final class TownEvents {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof AbstractVillager villager) {
 				VillagerNames.ensureNamed(villager);
+				if (villager instanceof Villager v) {
+					VillagerFood.giveStartingFood(v);
+				}
 			} else if (entity instanceof IronGolem golem) {
 				VillagerNames.ensureGolemNamed(golem);
 			}
@@ -97,14 +100,27 @@ public final class TownEvents {
 		if (!(villager instanceof Villager v)) {
 			return villager.getType().getDescription();
 		}
-		if (v.isBaby()) {
-			return Component.translatable("gui.townsfolk.villager.child");
+		return Component.translatable(jobKey(v));
+	}
+
+	/**
+	 * Translation key for a villager's job: its profession, or Child / Sentry / Unemployed. Vanilla
+	 * calls the "no profession" job "Villager", which says nothing, so that one is replaced.
+	 */
+	public static String jobKey(Villager villager) {
+		if (villager.isBaby()) {
+			return "gui.townsfolk.villager.child";
 		}
-		VillagerData villagerData = v.getVillagerData();
+		if (Sentry.isSentry(villager)) {
+			return "gui.townsfolk.villager.sentry";
+		}
+		VillagerData villagerData = villager.getVillagerData();
 		if (villagerData.profession().is(VillagerProfession.NONE)) {
-			return Component.translatable("gui.townsfolk.villager.unemployed");
+			return "gui.townsfolk.villager.unemployed";
 		}
-		return villagerData.profession().value().name();
+		return villagerData.profession().unwrapKey()
+			.map(key -> "entity." + key.identifier().getNamespace() + ".villager." + key.identifier().getPath())
+			.orElse("gui.townsfolk.villager.unemployed");
 	}
 
 	/** Whether the villager has trades to show. Uses only synced data so client and server agree. */
@@ -164,7 +180,10 @@ public final class TownEvents {
 			canTrade(villager),
 			VillagerCommands.canCommand(player, villager),
 			VillagerCommands.canEditGear(player, villager),
-			villager instanceof Villager v && FarmWork.isFarmer(v) ? FarmWork.capacity((ServerLevel) v.level(), v) : 0
+			villager instanceof Villager ? villager.getInventory().getContainerSize() : 0,
+			villager instanceof Villager v3 && Sentry.canBecomeSentry(v3) && VillagerCommands.canCommand(player, villager),
+			villager instanceof Villager v2 && VillagerFood.canFeed(player, v2),
+			villager instanceof Villager v4 && v4.getVillagerData().profession().is(VillagerProfession.NITWIT)
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

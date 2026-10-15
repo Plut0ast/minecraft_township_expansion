@@ -17,6 +17,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Browses towns: name (renameable at its own Town Center by Trusted players), population, the viewer's
@@ -36,12 +37,14 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 
 	private static final int HEADER_COLOR = 0xFF404040;
 	private static final int NAME_COLOR = 0xFFFFFFFF;
+	private static final int JOB_COLOR = 0xFFAAAAAA;
 
 	/**
 	 * A list line. Headers ("Villagers (5)") are drawn dark without a shadow, like vanilla labels.
 	 * {@code villagerIndex} is the row's index in the opened town's villager list, or -1 for other rows.
 	 */
-	private record Row(Component text, int color, boolean header, int villagerIndex) {
+	/** {@code job} is shown on the right of villager rows (null for other rows). */
+	private record Row(Component text, int color, boolean header, int villagerIndex, @Nullable Component job) {
 	}
 
 	private static final int REMOVE_X = LIST_X + LIST_W - 16;
@@ -104,26 +107,29 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		if (!town.players().isEmpty()) {
 			rows.add(header("gui.townsfolk.town_center.players", town.players().size()));
 			for (String player : town.players()) {
-				rows.add(new Row(Component.literal(player), NAME_COLOR, false, -1));
+				rows.add(new Row(Component.literal(player), NAME_COLOR, false, -1, null));
 			}
 		}
 		if (!town.villagers().isEmpty()) {
 			rows.add(header("gui.townsfolk.town_center.villagers", town.villagers().size()));
 			for (int i = 0; i < town.villagers().size(); i++) {
-				rows.add(new Row(Component.literal(town.villagers().get(i)), NAME_COLOR, false, removable ? i : -1));
+				Component job = i < town.villagerJobs().size() && !town.villagerJobs().get(i).isEmpty()
+					? Component.translatable(town.villagerJobs().get(i))
+					: null;
+				rows.add(new Row(Component.literal(town.villagers().get(i)), NAME_COLOR, false, removable ? i : -1, job));
 			}
 		}
 		if (!town.golems().isEmpty()) {
 			rows.add(header("gui.townsfolk.town_center.golems", town.golems().size()));
 			for (String golem : town.golems()) {
-				rows.add(new Row(Component.literal(golem), NAME_COLOR, false, -1));
+				rows.add(new Row(Component.literal(golem), NAME_COLOR, false, -1, null));
 			}
 		}
 		return rows;
 	}
 
 	private static Row header(String key, int count) {
-		return new Row(Component.translatable(key, count), HEADER_COLOR, true, -1);
+		return new Row(Component.translatable(key, count), HEADER_COLOR, true, -1, null);
 	}
 
 	@Override
@@ -287,6 +293,11 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			}
 			Row row = rows.get(i);
 			graphics.text(this.font, row.text(), x + LIST_X + (row.header() ? 3 : 8), rowY, row.color(), !row.header());
+			if (row.job() != null) {
+				// Right-aligned, clear of the remove mark and the scrollbar.
+				int right = x + (row.villagerIndex() >= 0 ? REMOVE_X - 4 : LIST_X + LIST_W - 7);
+				graphics.text(this.font, row.job(), right - this.font.width(row.job()), rowY, JOB_COLOR, true);
+			}
 			if (row.villagerIndex() >= 0) {
 				boolean hovered = this.removeRowAt(mouseX, mouseY) == i;
 				graphics.text(this.font, "✕", x + REMOVE_X, rowY, hovered ? REMOVE_HOVER_COLOR : REMOVE_COLOR, true);

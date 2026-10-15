@@ -2,6 +2,7 @@ package com.townsfolk.menu;
 
 import com.townsfolk.ModRegistry;
 import com.townsfolk.town.VillagerCommands;
+import com.townsfolk.town.VillagerFood;
 import java.util.Map;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -23,17 +24,24 @@ import net.minecraft.world.inventory.ArmorSlot;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /** A villager's or wandering trader's armour + hand slots, the player's inventory, and Trade / order buttons. */
 public class VillagerMenu extends AbstractContainerMenu {
 	public static final int BUTTON_TRADE = 0;
+	private static final Identifier EMPTY_HAND_ICON = Identifier.withDefaultNamespace("container/slot/sword");
 	public static final int BUTTON_COMMAND = 1;
 	public static final int EQUIPMENT_SLOTS = VillagerEquipmentContainer.SLOTS.length;
+	/** Every villager has this many pockets (vanilla has 8), shown beside its food slot. */
+	public static final int POCKETS = 3;
 	/** Where a farmer's carry slots sit, and how much taller the screen gets to fit them. */
-	public static final int CARRY_Y = 103;
+	public static final int CARRY_Y = 96;
 	public static final int CARRY_EXTRA_HEIGHT = 26;
+	/** The bottom row: food slot first, then the pockets after a small gap. */
+	public static final int FOOD_X = 8;
+	public static final int POCKET_X = 34;
 
 	private static final Map<EquipmentSlot, Identifier> EMPTY_ICONS = Map.of(
 		EquipmentSlot.HEAD, InventoryMenu.EMPTY_ARMOR_SLOT_HELMET,
@@ -47,7 +55,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 	 * by the villager's town and may give orders. {@code canEdit}: the viewer may change its gear.
 	 */
 	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit,
-		int carrySlots) {
+		int carrySlots, boolean canArm, boolean canFeed, boolean showHand) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT, Data::entityId,
 			ByteBufCodecs.STRING_UTF8, Data::name,
@@ -57,6 +65,9 @@ public class VillagerMenu extends AbstractContainerMenu {
 			ByteBufCodecs.BOOL, Data::canCommand,
 			ByteBufCodecs.BOOL, Data::canEdit,
 			ByteBufCodecs.VAR_INT, Data::carrySlots,
+			ByteBufCodecs.BOOL, Data::canArm,
+			ByteBufCodecs.BOOL, Data::canFeed,
+			ByteBufCodecs.BOOL, Data::showHand,
 			Data::new
 		);
 	}
@@ -95,10 +106,17 @@ public class VillagerMenu extends AbstractContainerMenu {
 				EquipmentSlot slot = VillagerEquipmentContainer.SLOTS[i];
 				this.addSlot(new LockableArmorSlot(equipment, villager, slot, i, 8, 18 + i * 18, EMPTY_ICONS.get(slot), data.canEdit()));
 			}
-			this.addSlot(new HandSlot(equipment, VillagerEquipmentContainer.HAND_INDEX, 77, 72, data.canEdit()));
-			// A farmer's pockets: as many slots as its farm gives it room for.
+			// Only nitwits (who can be armed as Sentries) show a hand slot.
+			if (data.showHand()) {
+				this.addSlot(new HandSlot(equipment, VillagerEquipmentContainer.HAND_INDEX, 77, 72, data.canEdit(), data.canArm()));
+			}
+			if (this.hasFoodSlot()) {
+				Container food = villager instanceof Villager v ? new VillagerFoodContainer(v) : new SimpleContainer(1);
+				this.addSlot(new FoodSlot(food, FOOD_X, CARRY_Y, data.canFeed(), data.canEdit()));
+			}
+			// The villager's pockets: changing them needs Friend.
 			for (int i = 0; i < this.carrySlots(); i++) {
-				this.addSlot(new LockableSlot(villager.getInventory(), i, 8 + i * 18, CARRY_Y, data.canEdit()));
+				this.addSlot(new PocketSlot(villager.getInventory(), i, POCKET_X + i * 18, CARRY_Y, data.canEdit(), false));
 			}
 		} else {
 			// The villager is not loaded on this client; show empty placeholders rather than crash.
@@ -106,10 +124,15 @@ public class VillagerMenu extends AbstractContainerMenu {
 			for (int i = 0; i < 4; i++) {
 				this.addSlot(new Slot(placeholder, i, 8, 18 + i * 18));
 			}
-			this.addSlot(new Slot(placeholder, VillagerEquipmentContainer.HAND_INDEX, 77, 72));
+			if (data.showHand()) {
+				this.addSlot(new Slot(placeholder, VillagerEquipmentContainer.HAND_INDEX, 77, 72));
+			}
+			if (this.hasFoodSlot()) {
+				this.addSlot(new FoodSlot(new SimpleContainer(1), FOOD_X, CARRY_Y, false, false));
+			}
 			SimpleContainer carryPlaceholder = new SimpleContainer(Math.max(1, this.carrySlots()));
 			for (int i = 0; i < this.carrySlots(); i++) {
-				this.addSlot(new LockableSlot(carryPlaceholder, i, 8 + i * 18, CARRY_Y, false));
+				this.addSlot(new PocketSlot(carryPlaceholder, i, POCKET_X + i * 18, CARRY_Y, false, false));
 			}
 		}
 
@@ -120,9 +143,37 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return this.data;
 	}
 
-	/** Farmer carry slots shown on this menu (0 for everyone else); never more than a villager's 8 pockets. */
+	/** The hand slot's index, or -1 when this villager does not show one (only nitwits do). */
+	public int handSlotIndex() {
+		return this.data.showHand() ? VillagerEquipmentContainer.HAND_INDEX : -1;
+	}
+
+	/** End of the armour (and hand, if shown) slots. */
+	private int equipmentEnd() {
+		return VillagerEquipmentContainer.HAND_INDEX + (this.data.showHand() ? 1 : 0);
+	}
+
+	/** Villagers (not wandering traders) have a food slot, right after the armour and hand slots. */
+	public boolean hasFoodSlot() {
+		return this.carrySlots() > 0;
+	}
+
+	public int foodSlotIndex() {
+		return this.hasFoodSlot() ? this.equipmentEnd() : -1;
+	}
+
+	/** First pocket slot; the player's inventory starts after the pockets. */
+	public int carryStart() {
+		return this.equipmentEnd() + (this.hasFoodSlot() ? 1 : 0);
+	}
+
+	public int playerStart() {
+		return this.carryStart() + this.carrySlots();
+	}
+
+	/** Pocket slots shown on this menu (3 for villagers, 0 for wandering traders). */
 	public int carrySlots() {
-		return Math.min(this.data.carrySlots(), 8);
+		return Math.min(this.data.carrySlots(), POCKETS);
 	}
 
 	public @Nullable AbstractVillager villager() {
@@ -173,8 +224,8 @@ public class VillagerMenu extends AbstractContainerMenu {
 
 		ItemStack stack = slot.getItem();
 		ItemStack original = stack.copy();
-		int carryStart = EQUIPMENT_SLOTS;
-		int playerStart = carryStart + this.carrySlots();
+		int carryStart = this.carryStart();
+		int playerStart = this.playerStart();
 		int playerEnd = this.slots.size();
 
 		if (slotIndex < playerStart) {
@@ -189,9 +240,13 @@ public class VillagerMenu extends AbstractContainerMenu {
 					moved = this.moveItemStackTo(stack, i, i + 1, false);
 				}
 			}
-			Slot hand = this.slots.get(VillagerEquipmentContainer.HAND_INDEX);
-			if (!moved && hand.mayPlace(stack)) {
-				moved = this.moveItemStackTo(stack, VillagerEquipmentContainer.HAND_INDEX, VillagerEquipmentContainer.HAND_INDEX + 1, false);
+			int food = this.foodSlotIndex();
+			if (!moved && food >= 0 && this.slots.get(food).mayPlace(stack)) {
+				moved = this.moveItemStackTo(stack, food, food + 1, false);
+			}
+			int hand = this.handSlotIndex();
+			if (!moved && hand >= 0 && this.slots.get(hand).mayPlace(stack)) {
+				moved = this.moveItemStackTo(stack, hand, hand + 1, false);
 			}
 			if (!moved && this.carrySlots() > 0 && this.slots.get(carryStart).mayPlace(stack)) {
 				moved = this.moveItemStackTo(stack, carryStart, playerStart, false);
@@ -214,18 +269,42 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return this.villager != null && this.villager.isAlive() && player.distanceToSqr(this.villager) <= 64.0;
 	}
 
-	/** A plain slot that is read-only unless the viewer may change this villager's gear. */
-	private static class LockableSlot extends Slot {
-		private final boolean editable;
+	/** Takes food only. Anyone but the town's Enemies may feed; taking food back out needs Friend. */
+	private static class FoodSlot extends Slot {
+		private final boolean canFeed;
+		private final boolean canTake;
 
-		LockableSlot(Container container, int index, int x, int y, boolean editable) {
-			super(container, index, x, y);
-			this.editable = editable;
+		FoodSlot(Container container, int x, int y, boolean canFeed, boolean canTake) {
+			super(container, 0, x, y);
+			this.canFeed = canFeed;
+			this.canTake = canTake;
 		}
 
 		@Override
 		public boolean mayPlace(ItemStack stack) {
-			return this.editable;
+			return this.canFeed && VillagerFood.isFood(stack);
+		}
+
+		@Override
+		public boolean mayPickup(Player player) {
+			return this.canTake && super.mayPickup(player);
+		}
+	}
+
+	/** A pocket slot: with Friend anything goes in and out; {@code canFeed} also lets others put food in. */
+	private static class PocketSlot extends Slot {
+		private final boolean editable;
+		private final boolean canFeed;
+
+		PocketSlot(Container container, int index, int x, int y, boolean editable, boolean canFeed) {
+			super(container, index, x, y);
+			this.editable = editable;
+			this.canFeed = canFeed;
+		}
+
+		@Override
+		public boolean mayPlace(ItemStack stack) {
+			return this.editable || (this.canFeed && VillagerFood.isFood(stack));
 		}
 
 		@Override
@@ -262,15 +341,27 @@ public class VillagerMenu extends AbstractContainerMenu {
 	private static class HandSlot extends Slot {
 		private final VillagerEquipmentContainer equipment;
 		private final boolean editable;
+		/** Handing a nitwit a sword makes it a Sentry, which needs Trusted; other villagers refuse swords. */
+		private final boolean canArm;
 
-		HandSlot(VillagerEquipmentContainer equipment, int index, int x, int y, boolean editable) {
+		HandSlot(VillagerEquipmentContainer equipment, int index, int x, int y, boolean editable, boolean canArm) {
 			super(equipment, index, x, y);
 			this.equipment = equipment;
 			this.editable = editable;
+			this.canArm = canArm;
+		}
+
+		/** An empty hand shows vanilla's faded sword, like the armour slots show armour. */
+		@Override
+		public Identifier getNoItemIcon() {
+			return EMPTY_HAND_ICON;
 		}
 
 		@Override
 		public boolean mayPlace(ItemStack stack) {
+			if (stack.is(ItemTags.SWORDS) && !this.canArm) {
+				return false;
+			}
 			return this.editable && this.equipment.villager().getMainHandItem().isEmpty();
 		}
 
