@@ -90,6 +90,11 @@ public class TownReputation extends SavedData {
 		this.setDirty();
 	}
 
+	public void set(BlockPos town, UUID player, int amount) {
+		this.towns.computeIfAbsent(key(town), k -> new HashMap<>()).put(player, amount);
+		this.setDirty();
+	}
+
 	/** Forget a town's reputation when its Town Center is broken. */
 	public void clear(BlockPos town) {
 		if (this.towns.remove(key(town)) != null) {

@@ -16,9 +16,7 @@ import net.minecraft.world.inventory.Slot;
 public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	private float xMouse;
 	private Button commandButton;
-	private Button removeButton;
-	/** Set after this player removes the villager, so the town line reads "No town" straight away. */
-	private boolean removed;
+
 	private float yMouse;
 
 	public VillagerScreen(VillagerMenu menu, Inventory inventory, Component title) {
@@ -49,24 +47,6 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		this.commandButton.setTooltip(Tooltip.create(Component.translatable(
 			this.menu.data().canCommand() ? "gui.townsfolk.villager.command.tooltip" : "gui.townsfolk.villager.command.locked")));
 		this.addRenderableWidget(this.commandButton);
-
-		this.removeButton = Button.builder(Component.literal("\u2715"), b -> this.removeFromTown())
-			.bounds(this.leftPos + 157, this.topPos + 29, 12, 12)
-			.tooltip(Tooltip.create(Component.translatable(
-				this.menu.data().canRemove() ? "gui.townsfolk.villager.remove" : "gui.townsfolk.villager.remove_locked")))
-			.build();
-		this.removeButton.active = this.menu.data().canRemove();
-		this.removeButton.visible = !this.menu.data().townName().isEmpty();
-		this.addRenderableWidget(this.removeButton);
-	}
-
-	private void removeFromTown() {
-		if (!this.menu.data().canRemove() || this.removed) {
-			return;
-		}
-		this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, VillagerMenu.BUTTON_REMOVE);
-		this.removed = true;
-		this.removeButton.visible = false;
 	}
 
 	private static Component commandLabel(VillagerCommands.Command command) {
@@ -135,10 +115,10 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 		VillagerMenu.Data data = this.menu.data();
 		graphics.text(this.font, Component.literal(data.name()), this.titleLabelX, this.titleLabelY, Panels.TEXT, false);
 		graphics.text(this.font, data.profession(), 100, 20, 0xFF606060, false);
-		Component town = data.townName().isEmpty() || this.removed
+		Component town = data.townName().isEmpty()
 			? Component.translatable("gui.townsfolk.villager.no_town")
 			: Component.translatable("gui.townsfolk.villager.town", data.townName());
-		graphics.text(this.font, this.fit(town, this.removeButton.visible ? 55 : 68), 100, 31, 0xFF606060, false);
+		graphics.text(this.font, this.fit(town, 68), 100, 31, 0xFF606060, false);
 		graphics.text(this.font, Component.translatable("gui.townsfolk.villager.hand"), 78, 62, Panels.TEXT, false);
 		graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, Panels.TEXT, false);
 	}

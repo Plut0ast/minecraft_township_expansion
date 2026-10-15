@@ -4,10 +4,15 @@ import com.townsfolk.ModRegistry;
 import com.townsfolk.block.TownCenterBlockEntity;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import com.townsfolk.town.TownExile;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -19,6 +24,8 @@ import net.minecraft.world.item.ItemStack;
  */
 public class TownCenterMenu extends AbstractContainerMenu {
 	public static final int BUTTON_JOIN = 0;
+	/** Button ids from here up remove the opened town's villager at (id - this) in {@link #homeVillagerIds()}. */
+	public static final int BUTTON_REMOVE_FIRST = 100;
 
 	/** One town as shown in the screen; {@code reputation} is the viewer's reputation with it. */
 	public record TownView(BlockPos pos, String name, List<String> villagers, List<String> golems, List<String> players, int reputation) {
@@ -36,6 +43,12 @@ public class TownCenterMenu extends AbstractContainerMenu {
 			return new TownView(this.pos, name, this.villagers, this.golems, this.players, this.reputation);
 		}
 
+		public TownView withoutVillager(int index) {
+			List<String> villagers = new ArrayList<>(this.villagers);
+			villagers.remove(index);
+			return new TownView(this.pos, this.name, villagers, this.golems, this.players, this.reputation);
+		}
+
 		public TownView withPlayer(String player) {
 			List<String> players = new ArrayList<>(this.players);
 			players.add(player);
@@ -45,13 +58,16 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	/**
 	 * {@code canRename}: the viewer is Trusted by the opened town. {@code canJoin}: the viewer is a Hero
-	 * of the opened town and not yet one of its players.
+	 * of the opened town and not yet one of its players. {@code canRemove}: the viewer is a Trusted
+	 * member and may remove villagers. {@code homeVillagerIds} matches the opened town's villager list.
 	 */
-	public record Data(List<TownView> towns, boolean canRename, boolean canJoin) {
+	public record Data(List<TownView> towns, boolean canRename, boolean canJoin, boolean canRemove, List<UUID> homeVillagerIds) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			TownView.STREAM_CODEC.apply(ByteBufCodecs.list()), Data::towns,
 			ByteBufCodecs.BOOL, Data::canRename,
 			ByteBufCodecs.BOOL, Data::canJoin,
+			ByteBufCodecs.BOOL, Data::canRemove,
+			UUIDUtil.STREAM_CODEC.apply(ByteBufCodecs.list()), Data::homeVillagerIds,
 			Data::new
 		);
 	}
@@ -59,12 +75,32 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	private final List<TownView> towns;
 	private final boolean canRename;
 	private boolean canJoin;
+	private final boolean canRemove;
+	private final List<UUID> homeVillagerIds;
 
 	public TownCenterMenu(int containerId, Inventory inventory, Data data) {
 		super(ModRegistry.TOWN_CENTER_MENU, containerId);
 		this.towns = new ArrayList<>(data.towns());
 		this.canRename = data.canRename();
 		this.canJoin = data.canJoin();
+		this.canRemove = data.canRemove();
+		this.homeVillagerIds = new ArrayList<>(data.homeVillagerIds());
+	}
+
+	public boolean canRemove() {
+		return this.canRemove;
+	}
+
+	public List<UUID> homeVillagerIds() {
+		return this.homeVillagerIds;
+	}
+
+	/** Client side: drop a removed villager from the opened town's list straight away. */
+	public void markRemoved(int index) {
+		if (index >= 0 && index < this.homeVillagerIds.size()) {
+			this.homeVillagerIds.remove(index);
+			this.towns.set(0, this.home().withoutVillager(index));
+		}
 	}
 
 	/** The town whose Town Center was opened. */
@@ -101,6 +137,9 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean clickMenuButton(Player player, int buttonId) {
+		if (buttonId >= BUTTON_REMOVE_FIRST) {
+			return this.removeVillager(player, buttonId - BUTTON_REMOVE_FIRST);
+		}
 		if (buttonId != BUTTON_JOIN || !this.canJoin) {
 			return false;
 		}
@@ -110,6 +149,23 @@ public class TownCenterMenu extends AbstractContainerMenu {
 				return false;
 			}
 			this.canJoin = false;
+		}
+		return true;
+	}
+
+	/** Server side: re-checks that the viewer is a Trusted member, then removes the villager from the town. */
+	private boolean removeVillager(Player player, int index) {
+		if (!this.canRemove || index < 0 || index >= this.homeVillagerIds.size()) {
+			return false;
+		}
+		if (player.level() instanceof ServerLevel level) {
+			if (!(level.getEntity(this.homeVillagerIds.get(index)) instanceof Villager villager)
+				|| !this.pos().equals(villager.getAttached(ModRegistry.TOWN))
+				|| !TownExile.canRemove(player, villager)) {
+				return false;
+			}
+			TownExile.remove(villager, level);
+			this.markRemoved(index);
 		}
 		return true;
 	}

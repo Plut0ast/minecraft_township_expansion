@@ -260,7 +260,19 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.names(true), List.of(), 0));
 		}
 		boolean canJoin = this.rankOf(player) == TownReputation.Rank.HERO && !this.isMember(player);
-		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin);
+		boolean canRemove = this.isTrustedBy(player) && this.isMember(player);
+		// The opened town's view must list villagers in the same order as these ids.
+		List<UUID> villagerIds = new ArrayList<>();
+		List<String> villagerNames = new ArrayList<>();
+		for (Resident resident : this.residents.values()) {
+			if (!resident.golem()) {
+				villagerIds.add(resident.uuid());
+				villagerNames.add(resident.name());
+			}
+		}
+		TownCenterMenu.TownView home = towns.getFirst();
+		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, home.golems(), home.players(), home.reputation()));
+		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin, canRemove, villagerIds);
 	}
 
 	@Override

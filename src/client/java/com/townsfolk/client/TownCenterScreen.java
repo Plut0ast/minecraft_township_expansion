@@ -14,6 +14,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -26,18 +27,31 @@ import net.minecraft.world.entity.player.Inventory;
 public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	private static final int ROW_HEIGHT = 12;
 	private static final int LIST_X = 8;
-	private static final int LIST_Y = 58;
+	private static final int LIST_Y = 52;
 	private static final int LIST_W = 160;
-	private static final int LIST_H = 98;
-	private static final int BAR_Y = 42;
+	private static final int LIST_H = 104;
+	private static final int RANK_Y = 20;
+	private static final int BAR_Y = 31;
+	private static final int NEXT_RANK_Y = 39;
 	private static final int NAV_Y = 162;
 
-	private static final int PLAYER_COLOR = 0xFFFFD34D;
+	// Vanilla chat colours.
+	private static final int HEADER_COLOR = 0xFF404040;
+	private static final int PLAYER_COLOR = 0xFFFFAA00;
 	private static final int VILLAGER_COLOR = 0xFFFFFFFF;
-	private static final int GOLEM_COLOR = 0xFFB8C8D8;
+	private static final int GOLEM_COLOR = 0xFFAAAAAA;
+	private static final int ENEMY_COLOR = 0xFFAA0000;
 
-	private record Row(String text, int color) {
+	/**
+	 * A list line. Headers ("Villagers (5)") are drawn dark without a shadow, like vanilla labels.
+	 * {@code villagerIndex} is the row's index in the opened town's villager list, or -1 for other rows.
+	 */
+	private record Row(Component text, int color, boolean header, int villagerIndex) {
 	}
+
+	private static final int REMOVE_X = LIST_X + LIST_W - 16;
+	private static final int REMOVE_COLOR = 0xFFFF5555;
+	private static final int REMOVE_HOVER_COLOR = 0xFFFFFFFF;
 
 	private int scroll;
 	/** Index into {@link #visibleTowns()}. */
@@ -84,23 +98,37 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		return this.menu.home().players().contains(me);
 	}
 
-	/** Players first (gold), then numbered villagers, then golems (steel). */
+	/** Sections with headings: players (gold), villagers (white), golems (grey). Empty sections are left out. */
 	private List<Row> rows() {
 		List<Row> rows = new ArrayList<>();
 		TownCenterMenu.TownView town = this.current();
 		if (town == null) {
 			return rows;
 		}
-		for (String player : town.players()) {
-			rows.add(new Row("☻ " + player, PLAYER_COLOR));
+		boolean removable = this.viewingHome() && this.menu.canRemove();
+		if (!town.players().isEmpty()) {
+			rows.add(header("gui.townsfolk.town_center.players", town.players().size()));
+			for (String player : town.players()) {
+				rows.add(new Row(Component.literal(player), PLAYER_COLOR, false, -1));
+			}
 		}
-		for (int i = 0; i < town.villagers().size(); i++) {
-			rows.add(new Row((i + 1) + ". " + town.villagers().get(i), VILLAGER_COLOR));
+		if (!town.villagers().isEmpty()) {
+			rows.add(header("gui.townsfolk.town_center.villagers", town.villagers().size()));
+			for (int i = 0; i < town.villagers().size(); i++) {
+				rows.add(new Row(Component.literal(town.villagers().get(i)), VILLAGER_COLOR, false, removable ? i : -1));
+			}
 		}
-		for (String golem : town.golems()) {
-			rows.add(new Row("⚙ " + golem, GOLEM_COLOR));
+		if (!town.golems().isEmpty()) {
+			rows.add(header("gui.townsfolk.town_center.golems", town.golems().size()));
+			for (String golem : town.golems()) {
+				rows.add(new Row(Component.literal(golem), GOLEM_COLOR, false, -1));
+			}
 		}
 		return rows;
+	}
+
+	private static Row header(String key, int count) {
+		return new Row(Component.translatable(key, count), HEADER_COLOR, true, -1);
 	}
 
 	@Override
@@ -240,7 +268,7 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		int x = this.leftPos;
 		int y = this.topPos;
 		Panels.window(graphics, x, y, this.imageWidth, this.imageHeight);
-		Panels.inset(graphics, x + LIST_X, y + LIST_Y, LIST_W, LIST_H, 0xFF8B8B8B);
+		Panels.inset(graphics, x + LIST_X, y + LIST_Y, LIST_W, LIST_H, Panels.SUNKEN_FILL);
 
 		TownCenterMenu.TownView town = this.current();
 		if (town != null) {
@@ -259,7 +287,11 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 				break;
 			}
 			Row row = rows.get(i);
-			graphics.text(this.font, row.text(), x + LIST_X + 4, rowY, row.color(), true);
+			graphics.text(this.font, row.text(), x + LIST_X + (row.header() ? 3 : 8), rowY, row.color(), !row.header());
+			if (row.villagerIndex() >= 0) {
+				boolean hovered = this.removeRowAt(mouseX, mouseY) == i;
+				graphics.text(this.font, "✕", x + REMOVE_X, rowY, hovered ? REMOVE_HOVER_COLOR : REMOVE_COLOR, true);
+			}
 		}
 		graphics.disableScissor();
 
@@ -285,40 +317,69 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			progress = (float) (reputation - TownReputation.ENEMY_AT) / (floor - TownReputation.ENEMY_AT);
 		}
 
-		Panels.inset(graphics, x, y, LIST_W, 8, 0xFF373737);
-		int filled = Math.round((LIST_W - 2) * Mth.clamp(progress, 0.0F, 1.0F));
-		graphics.fill(x + 1, y + 1, x + 1 + filled, y + 7, rank == TownReputation.Rank.ENEMY ? 0xFFC03030 : 0xFF5DBB3F);
+		Panels.bossBar(graphics, x, y, LIST_W, progress, rank == TownReputation.Rank.ENEMY);
 	}
 
 	@Override
 	protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
 		int count = this.visibleTowns().size();
 		Component counter = Component.literal(count == 0 ? "0/0" : (Mth.clamp(this.index, 0, count - 1) + 1) + "/" + count);
-		graphics.centeredText(this.font, counter, 44, NAV_Y + 5, Panels.TEXT);
+		// Vanilla container labels: dark grey, no shadow.
+		graphics.text(this.font, counter, 44 - this.font.width(counter) / 2, NAV_Y + 5, Panels.TEXT, false);
 
 		TownCenterMenu.TownView town = this.current();
 		if (town == null) {
 			return;
 		}
 
-		Component population = Component.translatable("gui.townsfolk.town_center.population",
-			town.villagers().size(), town.golems().size(), town.players().size());
-		graphics.text(this.font, population, LIST_X, 20, Panels.TEXT, false);
-
 		int reputation = town.reputation();
 		TownReputation.Rank rank = TownReputation.Rank.of(reputation);
 		TownReputation.Rank next = rank.next();
-		graphics.text(this.font, Component.translatable("gui.townsfolk.town_center.reputation", rank.displayName(), reputation), LIST_X, 31,
-			rank == TownReputation.Rank.ENEMY ? 0xFFA02020 : Panels.TEXT, false);
-		Component toNext = next == null
-			? Component.translatable("gui.townsfolk.town_center.max_rank")
-			: Component.translatable("gui.townsfolk.town_center.next_rank", next.threshold - reputation, next.displayName());
-		graphics.text(this.font, toNext, LIST_X + LIST_W - this.font.width(toNext), 20, 0xFF606060, false);
+		graphics.text(this.font, Component.translatable("gui.townsfolk.town_center.reputation", rank.displayName(), reputation), LIST_X, RANK_Y,
+			rank == TownReputation.Rank.ENEMY ? ENEMY_COLOR : Panels.TEXT, false);
 
 		Component where = this.viewingHome()
 			? Component.translatable("gui.townsfolk.town_center.here")
 			: Component.translatable("gui.townsfolk.town_center.distance", (int) Math.round(Math.sqrt(town.pos().distSqr(this.menu.pos()))));
-		graphics.text(this.font, where, LIST_X + LIST_W - this.font.width(where), 31, 0xFF606060, false);
+		graphics.text(this.font, where, LIST_X + LIST_W - this.font.width(where), RANK_Y, Panels.TEXT_LIGHT, false);
+
+		Component toNext = next == null
+			? Component.translatable("gui.townsfolk.town_center.max_rank")
+			: Component.translatable("gui.townsfolk.town_center.next_rank", next.threshold - reputation, next.displayName());
+		graphics.text(this.font, toNext, LIST_X, NEXT_RANK_Y, Panels.TEXT_LIGHT, false);
+	}
+
+	/** The list row whose remove mark is under the mouse, or -1. */
+	private int removeRowAt(double mouseX, double mouseY) {
+		double localX = mouseX - this.leftPos - REMOVE_X;
+		double localY = mouseY - this.topPos - LIST_Y - 2;
+		if (localX < -2 || localX > 9 || localY < 0 || localY >= LIST_H - 4) {
+			return -1;
+		}
+		int row = this.scroll + (int) (localY / ROW_HEIGHT);
+		List<Row> rows = this.rows();
+		return row < rows.size() && rows.get(row).villagerIndex() >= 0 ? row : -1;
+	}
+
+	@Override
+	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		int row = this.removeRowAt(event.x(), event.y());
+		if (row >= 0 && event.button() == 0) {
+			int index = this.rows().get(row).villagerIndex();
+			this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, TownCenterMenu.BUTTON_REMOVE_FIRST + index);
+			this.menu.markRemoved(index);
+			this.scroll = Mth.clamp(this.scroll, 0, this.maxScroll());
+			return true;
+		}
+		return super.mouseClicked(event, doubleClick);
+	}
+
+	@Override
+	protected void extractTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+		super.extractTooltip(graphics, mouseX, mouseY);
+		if (this.removeRowAt(mouseX, mouseY) >= 0) {
+			graphics.setTooltipForNextFrame(this.font, Component.translatable("gui.townsfolk.town_center.remove"), mouseX, mouseY);
+		}
 	}
 
 	@Override

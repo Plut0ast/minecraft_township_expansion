@@ -1,7 +1,6 @@
 package com.townsfolk.menu;
 
 import com.townsfolk.ModRegistry;
-import com.townsfolk.town.TownExile;
 import com.townsfolk.town.VillagerCommands;
 import java.util.Map;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -10,7 +9,6 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -31,7 +29,6 @@ import org.jspecify.annotations.Nullable;
 public class VillagerMenu extends AbstractContainerMenu {
 	public static final int BUTTON_TRADE = 0;
 	public static final int BUTTON_COMMAND = 1;
-	public static final int BUTTON_REMOVE = 2;
 	public static final int EQUIPMENT_SLOTS = VillagerEquipmentContainer.SLOTS.length;
 
 	private static final Map<EquipmentSlot, Identifier> EMPTY_ICONS = Map.of(
@@ -44,10 +41,8 @@ public class VillagerMenu extends AbstractContainerMenu {
 	/**
 	 * {@code townName} is empty when the villager has no town. {@code canCommand}: the viewer is Trusted
 	 * by the villager's town and may give orders. {@code canEdit}: the viewer may change its gear.
-	 * {@code canRemove}: the viewer is a Trusted member of the villager's town and may remove it.
 	 */
-	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit,
-		boolean canRemove) {
+	public record Data(int entityId, String name, Component profession, String townName, boolean canTrade, boolean canCommand, boolean canEdit) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT, Data::entityId,
 			ByteBufCodecs.STRING_UTF8, Data::name,
@@ -56,7 +51,6 @@ public class VillagerMenu extends AbstractContainerMenu {
 			ByteBufCodecs.BOOL, Data::canTrade,
 			ByteBufCodecs.BOOL, Data::canCommand,
 			ByteBufCodecs.BOOL, Data::canEdit,
-			ByteBufCodecs.BOOL, Data::canRemove,
 			Data::new
 		);
 	}
@@ -124,19 +118,6 @@ public class VillagerMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean clickMenuButton(Player player, int buttonId) {
-		if (buttonId == BUTTON_REMOVE) {
-			if (!(this.villager instanceof Villager v) || !this.data.canRemove()) {
-				return false;
-			}
-			// Re-check on the server: membership or reputation may have changed since the menu opened.
-			if (player.level() instanceof ServerLevel level) {
-				if (!TownExile.canRemove(player, v)) {
-					return false;
-				}
-				TownExile.remove(v, level);
-			}
-			return true;
-		}
 		if (buttonId == BUTTON_COMMAND) {
 			if (this.villager == null || !this.data.canCommand()) {
 				return false;
