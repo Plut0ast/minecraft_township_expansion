@@ -3,6 +3,7 @@ package com.townsfolk.town;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.block.TownCenterBlockEntity;
 import com.townsfolk.menu.VillagerMenu;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerBlockEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -14,7 +15,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerData;
@@ -26,6 +31,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class TownEvents {
+	/** Reputation lost for each hit on one of a town's villagers. */
+	private static final int HURT_VILLAGER_PENALTY = -5;
+	/** Extra reputation lost for killing one of a town's villagers. */
+	private static final int KILL_VILLAGER_PENALTY = -25;
+
 	private TownEvents() {
 	}
 
@@ -33,6 +43,8 @@ public final class TownEvents {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof AbstractVillager villager) {
 				VillagerNames.ensureNamed(villager);
+			} else if (entity instanceof IronGolem golem) {
+				VillagerNames.ensureGolemNamed(golem);
 			}
 		});
 
@@ -50,6 +62,14 @@ public final class TownEvents {
 		});
 
 		ServerTickEvents.END_LEVEL_TICK.register(TownCenters::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(TownGuards::tick);
+
+		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamage, damageTaken, blocked) -> {
+			if (damageTaken > 0.0F) {
+				penalize(entity, source, HURT_VILLAGER_PENALTY);
+			}
+		});
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> penalize(entity, source, KILL_VILLAGER_PENALTY));
 
 		UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
 			if (!(entity instanceof AbstractVillager villager) || player.isSpectator() || letVanillaHandle(player.getItemInHand(hand))) {
@@ -70,17 +90,30 @@ public final class TownEvents {
 		return held.is(Items.NAME_TAG) || held.is(Items.LEAD) || held.is(Items.VILLAGER_SPAWN_EGG) || held.is(Items.WANDERING_TRADER_SPAWN_EGG);
 	}
 
-	private static void onEntityUnload(Entity entity, ServerLevel level) {
-		if (!(entity instanceof Villager villager)) {
-			return;
-		}
-		Entity.RemovalReason reason = villager.getRemovalReason();
-		if (reason != Entity.RemovalReason.KILLED && reason != Entity.RemovalReason.DISCARDED) {
+	/** A player (directly or with a projectile) harming a town's villager loses reputation with that town. */
+	private static void penalize(LivingEntity victim, DamageSource source, int amount) {
+		if (!(victim instanceof Villager villager)
+			|| !(villager.level() instanceof ServerLevel level)
+			|| !(source.getEntity() instanceof ServerPlayer player)) {
 			return;
 		}
 		BlockPos town = villager.getAttached(ModRegistry.TOWN);
+		if (town != null && !TownCenters.isDestroyed(level, town)) {
+			TownReputation.get(level).add(town, player.getUUID(), amount);
+		}
+	}
+
+	private static void onEntityUnload(Entity entity, ServerLevel level) {
+		if (!(entity instanceof Mob member) || !TownCenters.canJoinTown(member)) {
+			return;
+		}
+		Entity.RemovalReason reason = member.getRemovalReason();
+		if (reason != Entity.RemovalReason.KILLED && reason != Entity.RemovalReason.DISCARDED) {
+			return;
+		}
+		BlockPos town = member.getAttached(ModRegistry.TOWN);
 		if (town != null && level.isLoaded(town) && level.getBlockEntity(town) instanceof TownCenterBlockEntity townCenter) {
-			townCenter.removeResident(villager.getUUID());
+			townCenter.removeResident(member.getUUID());
 		}
 	}
 
@@ -103,7 +136,8 @@ public final class TownEvents {
 			villager.getId(),
 			VillagerNames.nameOf(villager),
 			job,
-			canTrade && !villager.isBaby()
+			canTrade && !villager.isBaby(),
+			VillagerCommands.canCommand(player, villager)
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

@@ -1,6 +1,7 @@
 package com.townsfolk.menu;
 
 import com.townsfolk.ModRegistry;
+import com.townsfolk.town.VillagerCommands;
 import java.util.Map;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -18,14 +19,16 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ArmorSlot;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
-/** A villager's or wandering trader's armour + hand slots, the player's inventory, and a Trade button (button id 0). */
+/** A villager's or wandering trader's armour + hand slots, the player's inventory, and Trade / order buttons. */
 public class VillagerMenu extends AbstractContainerMenu {
 	public static final int BUTTON_TRADE = 0;
+	public static final int BUTTON_COMMAND = 1;
 	public static final int EQUIPMENT_SLOTS = VillagerEquipmentContainer.SLOTS.length;
 
 	private static final Map<EquipmentSlot, Identifier> EMPTY_ICONS = Map.of(
@@ -35,18 +38,22 @@ public class VillagerMenu extends AbstractContainerMenu {
 		EquipmentSlot.FEET, InventoryMenu.EMPTY_ARMOR_SLOT_BOOTS
 	);
 
-	public record Data(int entityId, String name, Component profession, boolean canTrade) {
+	/** {@code canCommand}: the viewer is Trusted by this villager's town and may give it orders. */
+	public record Data(int entityId, String name, Component profession, boolean canTrade, boolean canCommand) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT, Data::entityId,
 			ByteBufCodecs.STRING_UTF8, Data::name,
 			ComponentSerialization.TRUSTED_STREAM_CODEC, Data::profession,
 			ByteBufCodecs.BOOL, Data::canTrade,
+			ByteBufCodecs.BOOL, Data::canCommand,
 			Data::new
 		);
 	}
 
 	private final Data data;
 	private final @Nullable AbstractVillager villager;
+	/** The villager's current order (ordinal of {@link VillagerCommands.Command}), synced to the client. */
+	private final DataSlot command;
 
 	/** Client-side constructor: finds the villager by its network id. */
 	public VillagerMenu(int containerId, Inventory inventory, Data data) {
@@ -58,6 +65,18 @@ public class VillagerMenu extends AbstractContainerMenu {
 		super(ModRegistry.VILLAGER_MENU, containerId);
 		this.data = data;
 		this.villager = villager;
+		this.command = this.addDataSlot(villager != null && !inventory.player.level().isClientSide()
+			? new DataSlot() {
+				@Override
+				public int get() {
+					return VillagerCommands.commandOf(villager).ordinal();
+				}
+
+				@Override
+				public void set(int value) {
+				}
+			}
+			: DataSlot.standalone());
 
 		if (villager != null) {
 			VillagerEquipmentContainer equipment = new VillagerEquipmentContainer(villager);
@@ -86,8 +105,27 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return this.villager;
 	}
 
+	public VillagerCommands.Command command() {
+		VillagerCommands.Command[] commands = VillagerCommands.Command.values();
+		int ordinal = this.command.get();
+		return ordinal >= 0 && ordinal < commands.length ? commands[ordinal] : VillagerCommands.Command.WANDER;
+	}
+
 	@Override
 	public boolean clickMenuButton(Player player, int buttonId) {
+		if (buttonId == BUTTON_COMMAND) {
+			if (this.villager == null || !this.data.canCommand()) {
+				return false;
+			}
+			// Re-check on the server: reputation may have changed since the menu opened.
+			if (!player.level().isClientSide()) {
+				if (!VillagerCommands.canCommand(player, this.villager)) {
+					return false;
+				}
+				VillagerCommands.cycle(player, this.villager);
+			}
+			return true;
+		}
 		if (buttonId != BUTTON_TRADE || this.villager == null || !this.data.canTrade()) {
 			return false;
 		}

@@ -5,7 +5,9 @@ import com.townsfolk.block.TownCenterBlock;
 import com.townsfolk.block.TownCenterBlockEntity;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.menu.VillagerMenu;
+import com.townsfolk.town.VillagerCommands;
 import java.util.Set;
+import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -13,6 +15,7 @@ import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -64,7 +67,7 @@ public final class ModRegistry {
 		new ExtendedMenuType<>(VillagerMenu::new, VillagerMenu.Data.STREAM_CODEC)
 	);
 
-	/** Position of the Town Center this villager belongs to. Once set it never changes. */
+	/** Position of the Town Center this villager or iron golem belongs to. Cleared only if that Town Center is broken. */
 	public static final AttachmentType<BlockPos> TOWN = AttachmentRegistry.<BlockPos>builder()
 		.persistent(BlockPos.CODEC)
 		.buildAndRegister(Townsfolk.id("town"));
@@ -74,6 +77,16 @@ public final class ModRegistry {
 		.persistent(Codec.BOOL)
 		.syncWith(ByteBufCodecs.BOOL, AttachmentSyncPredicate.all())
 		.buildAndRegister(Townsfolk.id("hand_owned"));
+
+	/** Current order from a Trusted player (wander when absent). */
+	public static final AttachmentType<VillagerCommands.Command> COMMAND = AttachmentRegistry.<VillagerCommands.Command>builder()
+		.persistent(VillagerCommands.Command.CODEC)
+		.buildAndRegister(Townsfolk.id("command"));
+
+	/** The player who gave the current order; followed when the order is follow. */
+	public static final AttachmentType<UUID> COMMAND_OWNER = AttachmentRegistry.<UUID>builder()
+		.persistent(UUIDUtil.CODEC)
+		.buildAndRegister(Townsfolk.id("command_owner"));
 
 	private ModRegistry() {
 	}

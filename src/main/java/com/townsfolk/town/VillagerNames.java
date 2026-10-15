@@ -2,8 +2,9 @@ package com.townsfolk.town;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.world.entity.Mob;
 
+/** Random names for villagers, wandering traders and (robotic) iron golems. */
 public final class VillagerNames {
 	private static final String[] NAMES = {
 		"Ada", "Aldric", "Alma", "Ansel", "Astrid", "Aubrey", "Barnaby", "Beatrix", "Bertram", "Bram",
@@ -20,19 +21,35 @@ public final class VillagerNames {
 		"Nora", "Oswin", "Prudence", "Reuben", "Saffron", "Tristan", "Ursula", "Vaughn", "Winifred", "Edric"
 	};
 
+	private static final String[] GOLEM_NAMES = {
+		"Bolt", "Rivet", "Cog", "Clank", "Anvil", "Gearhart", "Ironside", "Piston", "Sprocket", "Tinker",
+		"Ingot", "Forge", "Ferrum", "Magnet", "Titan", "Brass", "Dynamo", "Servo", "Gizmo", "Crank",
+		"Lugnut", "Spanner", "Cinder", "Bulwark", "Sentinel", "Warden", "Plate", "Hinge", "Bellows", "Tungsten",
+		"Cobalt", "Ratchet", "Chassis", "Boiler", "Steelheart", "Cogsworth", "Quarry", "Ballast", "Gauge", "Valve"
+	};
+
 	private VillagerNames() {
 	}
 
-	/** Gives the villager a random name if it does not already have one. */
-	public static void ensureNamed(AbstractVillager villager) {
-		if (!villager.hasCustomName()) {
-			RandomSource random = villager.getRandom();
-			villager.setCustomName(Component.literal(NAMES[random.nextInt(NAMES.length)]));
+	/** Gives the mob a random name if it does not already have one. */
+	public static void ensureNamed(Mob mob) {
+		if (!mob.hasCustomName()) {
+			RandomSource random = mob.getRandom();
+			mob.setCustomName(Component.literal(NAMES[random.nextInt(NAMES.length)]));
 		}
 	}
 
-	public static String nameOf(AbstractVillager villager) {
-		Component name = villager.getCustomName();
-		return name != null ? name.getString() : villager.getType().getDescription().getString();
+	/** Gives an iron golem a robotic name with a serial number, e.g. "Rivet-42". */
+	public static void ensureGolemNamed(Mob golem) {
+		if (!golem.hasCustomName()) {
+			RandomSource random = golem.getRandom();
+			String name = GOLEM_NAMES[random.nextInt(GOLEM_NAMES.length)] + "-" + (1 + random.nextInt(99));
+			golem.setCustomName(Component.literal(name));
+		}
+	}
+
+	public static String nameOf(Mob mob) {
+		Component name = mob.getCustomName();
+		return name != null ? name.getString() : mob.getType().getDescription().getString();
 	}
 }

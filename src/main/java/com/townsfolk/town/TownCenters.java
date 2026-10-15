@@ -17,6 +17,9 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.StructureTags;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -103,7 +106,13 @@ public final class TownCenters {
 			.orElse(null);
 	}
 
-	private static List<TownCenterBlockEntity> townsNear(ServerLevel level, BlockPos pos, @Nullable BlockPos exclude) {
+	/** Villagers and iron golems can belong to a town. */
+	public static boolean canJoinTown(Mob mob) {
+		return mob instanceof Villager || mob instanceof IronGolem;
+	}
+
+	/** Town Centers whose area contains {@code pos}, optionally skipping the one at {@code exclude}. */
+	public static List<TownCenterBlockEntity> townsNear(ServerLevel level, BlockPos pos, @Nullable BlockPos exclude) {
 		Set<BlockPos> loaded = LOADED.get(level.dimension());
 		List<TownCenterBlockEntity> towns = new ArrayList<>();
 		if (loaded == null) {

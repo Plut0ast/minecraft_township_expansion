@@ -1,5 +1,6 @@
 package com.townsfolk;
 
+import com.townsfolk.town.RenameTownPayload;
 import com.townsfolk.town.TownEvents;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
@@ -14,6 +15,7 @@ public class Townsfolk implements ModInitializer {
 	public void onInitialize() {
 		ModRegistry.init();
 		TownEvents.init();
+		RenameTownPayload.register();
 	}
 
 	public static Identifier id(String path) {

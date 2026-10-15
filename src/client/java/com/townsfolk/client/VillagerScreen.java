@@ -1,6 +1,7 @@
 package com.townsfolk.client;
 
 import com.townsfolk.menu.VillagerMenu;
+import com.townsfolk.town.VillagerCommands;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -11,9 +12,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.inventory.Slot;
 
-/** AbstractVillager preview, name and profession, armour + hand slots, and a Trade button. */
+/** Villager or wandering trader preview, name and job, armour + hand slots, an order button and a Trade button. */
 public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	private float xMouse;
+	private Button commandButton;
 	private float yMouse;
 
 	public VillagerScreen(VillagerMenu menu, Inventory inventory, Component title) {
@@ -34,6 +36,29 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 			trade.setTooltip(Tooltip.create(Component.translatable("gui.townsfolk.villager.no_trades")));
 		}
 		this.addRenderableWidget(trade);
+
+		this.commandButton = Button.builder(commandLabel(this.menu.command()), b -> {
+				this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, VillagerMenu.BUTTON_COMMAND);
+			})
+			.bounds(this.leftPos + 100, this.topPos + 46, 68, 20)
+			.build();
+		this.commandButton.active = this.menu.data().canCommand();
+		this.commandButton.setTooltip(Tooltip.create(Component.translatable(
+			this.menu.data().canCommand() ? "gui.townsfolk.villager.command.tooltip" : "gui.townsfolk.villager.command.locked")));
+		this.addRenderableWidget(this.commandButton);
+	}
+
+	private static Component commandLabel(VillagerCommands.Command command) {
+		return Component.translatable("gui.townsfolk.villager.command." + command.name().toLowerCase());
+	}
+
+	@Override
+	protected void containerTick() {
+		super.containerTick();
+		// The order is synced from the server, so refresh the label after each click lands.
+		if (this.commandButton != null) {
+			this.commandButton.setMessage(commandLabel(this.menu.command()));
+		}
 	}
 
 	@Override

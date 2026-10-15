@@ -17,9 +17,12 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * Kept in level data rather than the block entity so trades count even when the Town Center's chunk is unloaded.
  */
 public class TownReputation extends SavedData {
-	/** Reputation needed for each rank, lowest first. */
+	/**
+	 * Ranks, lowest first. Enemy is reputation at or below {@link #ENEMY_AT}; above that each rank
+	 * starts at its threshold. Stranger covers everything between Enemy and Visitor.
+	 */
 	public enum Rank {
-		STRANGER(0), VISITOR(10), FRIEND(50), TRUSTED(150), HERO(400);
+		ENEMY(ENEMY_AT), STRANGER(ENEMY_AT + 1), VISITOR(10), FRIEND(50), TRUSTED(150), HERO(400);
 
 		public final int threshold;
 
@@ -28,9 +31,12 @@ public class TownReputation extends SavedData {
 		}
 
 		public static Rank of(int reputation) {
+			if (reputation <= ENEMY_AT) {
+				return ENEMY;
+			}
 			Rank rank = STRANGER;
 			for (Rank r : values()) {
-				if (reputation >= r.threshold) {
+				if (r.ordinal() > STRANGER.ordinal() && reputation >= r.threshold) {
 					rank = r;
 				}
 			}
@@ -46,6 +52,9 @@ public class TownReputation extends SavedData {
 			return Component.translatable("rank.townsfolk." + this.name().toLowerCase());
 		}
 	}
+
+	/** At or below this reputation a player is an enemy of the town. */
+	public static final int ENEMY_AT = -10;
 
 	private static final Codec<Map<String, Map<UUID, Integer>>> MAP_CODEC =
 		Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.INT));

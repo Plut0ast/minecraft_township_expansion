@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.town.TownCenters;
+import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownReputation;
 import com.townsfolk.town.VillagerNames;
 import java.util.ArrayList;
@@ -18,7 +19,8 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -30,19 +32,21 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 
 public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuProvider<TownCenterMenu.Data> {
-	/** Villagers within this many blocks that have no town yet join this one. */
+	/** Villagers and iron golems within this many blocks that have no town yet join this one. */
 	public static final int CLAIM_RADIUS = 64;
 	private static final int CLAIM_INTERVAL_TICKS = 100;
 
-	private record Resident(UUID uuid, String name) {
+	private record Resident(UUID uuid, String name, boolean golem) {
 		static final Codec<Resident> CODEC = RecordCodecBuilder.create(i -> i.group(
 			UUIDUtil.CODEC.fieldOf("uuid").forGetter(Resident::uuid),
-			Codec.STRING.fieldOf("name").forGetter(Resident::name)
+			Codec.STRING.fieldOf("name").forGetter(Resident::name),
+			Codec.BOOL.optionalFieldOf("golem", false).forGetter(Resident::golem)
 		).apply(i, Resident::new));
 	}
 
-	private final Map<UUID, String> residents = new LinkedHashMap<>();
-	/** Game time this town was founded; newer towns win villagers that have no town yet. -1 until first tick. */
+	private final Map<UUID, Resident> residents = new LinkedHashMap<>();
+	private String townName = "";
+	/** Game time this town was founded; newer towns win members that have no town yet. -1 until first tick. */
 	private long foundedAt = -1;
 
 	public TownCenterBlockEntity(BlockPos pos, BlockState state) {
@@ -54,9 +58,35 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			townCenter.foundedAt = level.getGameTime();
 			townCenter.setChanged();
 		}
+		townCenter.ensureTownName();
 		if ((level.getGameTime() + pos.asLong()) % CLAIM_INTERVAL_TICKS == 0) {
 			townCenter.refreshResidents();
 		}
+	}
+
+	/** Gives a new town a random default name such as "Oakhollow". */
+	public void ensureTownName() {
+		if (this.townName.isEmpty() && this.level != null) {
+			this.townName = TownNames.random(this.level.getRandom());
+			this.setChanged();
+		}
+	}
+
+	public String townName() {
+		this.ensureTownName();
+		return this.townName;
+	}
+
+	public void setTownName(String townName) {
+		this.townName = townName;
+		this.setChanged();
+	}
+
+	/** Trusted (or better) players may rename the town and give its villagers orders. */
+	public boolean isTrustedBy(Player player) {
+		return this.level instanceof ServerLevel serverLevel
+			&& TownReputation.Rank.of(TownReputation.get(serverLevel).get(this.worldPosition, player.getUUID())).ordinal()
+				>= TownReputation.Rank.TRUSTED.ordinal();
 	}
 
 	/** Newer towns sort higher; a town that has not ticked yet was placed just now, so it is the newest. */
@@ -65,8 +95,8 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	}
 
 	/**
-	 * Claims nearby villagers without a town and refreshes the names of loaded residents. A villager
-	 * without a town joins the newest town whose area it is in, so it may be left for another town.
+	 * Claims nearby villagers and iron golems without a town and refreshes the names of loaded residents.
+	 * A member without a town joins the newest town whose area it is in, so it may be left for another town.
 	 */
 	public void refreshResidents() {
 		if (!(this.level instanceof ServerLevel serverLevel)) {
@@ -75,20 +105,20 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 
 		boolean changed = false;
 		AABB area = new AABB(this.worldPosition).inflate(CLAIM_RADIUS);
-		for (Villager villager : serverLevel.getEntitiesOfClass(Villager.class, area, Villager::isAlive)) {
-			BlockPos town = villager.getAttached(ModRegistry.TOWN);
+		for (Mob member : serverLevel.getEntitiesOfClass(Mob.class, area, m -> m.isAlive() && TownCenters.canJoinTown(m))) {
+			BlockPos town = member.getAttached(ModRegistry.TOWN);
 			if (town != null && TownCenters.isDestroyed(serverLevel, town)) {
-				villager.removeAttached(ModRegistry.TOWN);
+				member.removeAttached(ModRegistry.TOWN);
 				town = null;
 			}
-			if (town == null && this.worldPosition.equals(TownCenters.townFor(serverLevel, villager.blockPosition()))) {
-				villager.setAttached(ModRegistry.TOWN, this.worldPosition);
+			if (town == null && this.worldPosition.equals(TownCenters.townFor(serverLevel, member.blockPosition()))) {
+				member.setAttached(ModRegistry.TOWN, this.worldPosition);
 				town = this.worldPosition;
 			}
 
-			if (town.equals(this.worldPosition)) {
-				String name = VillagerNames.nameOf(villager);
-				if (!name.equals(this.residents.put(villager.getUUID(), name))) {
+			if (this.worldPosition.equals(town)) {
+				Resident resident = new Resident(member.getUUID(), VillagerNames.nameOf(member), member instanceof IronGolem);
+				if (!resident.equals(this.residents.put(member.getUUID(), resident))) {
 					changed = true;
 				}
 			}
@@ -99,21 +129,22 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		}
 	}
 
-	/** When this Town Center is broken, its villagers become free to join another town and its reputation is lost. */
+	/** When this Town Center is broken, its members become free to join another town and its reputation is lost. */
 	@Override
 	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
 		super.preRemoveSideEffects(pos, state);
 		if (this.level instanceof ServerLevel serverLevel) {
 			TownReputation.get(serverLevel).clear(pos);
 			AABB area = new AABB(pos).inflate(CLAIM_RADIUS * 2);
-			for (Villager villager : serverLevel.getEntitiesOfClass(Villager.class, area, v -> pos.equals(v.getAttached(ModRegistry.TOWN)))) {
-				villager.removeAttached(ModRegistry.TOWN);
+			for (Mob member : serverLevel.getEntitiesOfClass(Mob.class, area, m -> pos.equals(m.getAttached(ModRegistry.TOWN)))) {
+				member.removeAttached(ModRegistry.TOWN);
 			}
 		}
 	}
 
+	/** Number of villagers (golems are not counted). */
 	public int population() {
-		return this.residents.size();
+		return (int) this.residents.values().stream().filter(r -> !r.golem()).count();
 	}
 
 	public void removeResident(UUID uuid) {
@@ -122,24 +153,32 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		}
 	}
 
-	public List<String> residentNames() {
-		return new ArrayList<>(this.residents.values());
+	private List<String> names(boolean golems) {
+		List<String> names = new ArrayList<>();
+		for (Resident resident : this.residents.values()) {
+			if (resident.golem() == golems) {
+				names.add(resident.name());
+			}
+		}
+		return names;
 	}
 
 	@Override
 	protected void loadAdditional(ValueInput input) {
 		super.loadAdditional(input);
 		this.foundedAt = input.getLongOr("founded_at", -1L);
+		this.townName = input.getStringOr("name", "");
 		this.residents.clear();
-		input.listOrEmpty("residents", Resident.CODEC).forEach(r -> this.residents.put(r.uuid(), r.name()));
+		input.listOrEmpty("residents", Resident.CODEC).forEach(r -> this.residents.put(r.uuid(), r));
 	}
 
 	@Override
 	protected void saveAdditional(ValueOutput output) {
 		super.saveAdditional(output);
 		output.putLong("founded_at", this.foundedAt);
+		output.putString("name", this.townName);
 		ValueOutput.TypedOutputList<Resident> list = output.list("residents", Resident.CODEC);
-		this.residents.forEach((uuid, name) -> list.add(new Resident(uuid, name)));
+		this.residents.values().forEach(list::add);
 	}
 
 	@Override
@@ -156,7 +195,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		int reputation = this.level instanceof ServerLevel serverLevel
 			? TownReputation.get(serverLevel).get(this.worldPosition, player.getUUID())
 			: 0;
-		return new TownCenterMenu.Data(this.worldPosition, this.residentNames(), reputation);
+		return new TownCenterMenu.Data(this.worldPosition, this.townName(), this.names(false), this.names(true), reputation, this.isTrustedBy(player));
 	}
 
 	@Override
