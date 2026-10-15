@@ -96,7 +96,8 @@ public final class HeldWeapons {
 		}
 		state.setData(SPEAR, spearState);
 
-		boolean bow = held.is(Items.BOW);
+		// Bows and crossbows are both held out in front, using their in-hand models.
+		boolean bow = held.is(Items.BOW) || held.is(Items.CROSSBOW);
 		float swing = weapon && !bow && villager.isSwinging() ? villager.getSwingAnimation(partialTicks) : 0.0F;
 		state.setData(SWING, swing > 0.0F ? swing : null);
 		ItemStackRenderState bowState = null;

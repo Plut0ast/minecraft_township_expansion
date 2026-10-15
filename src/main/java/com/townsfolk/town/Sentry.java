@@ -34,6 +34,9 @@ import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.component.SwingAnimation;
+import net.minecraft.world.item.component.ChargedProjectiles;
+import net.minecraft.world.item.CrossbowItem;
+import java.util.List;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -58,6 +61,8 @@ public final class Sentry {
 	private static final float CHASE_SPEED = 0.75F;
 	/** Archers draw for this long before loosing, like a skeleton (shorter if the bow cooldown is shorter). */
 	private static final int BOW_DRAW_TICKS = 20;
+	/** A crossbow Sentry holds its loaded crossbow up this long before firing. */
+	private static final int CROSSBOW_AIM_TICKS = 6;
 
 	private static final Map<Villager, LivingEntity> TARGETS = new WeakHashMap<>();
 	private static final Map<Villager, Long> NEXT_ATTACK = new WeakHashMap<>();
@@ -75,6 +80,7 @@ public final class Sentry {
 		// A Sentry stays one while it eats, with its weapon put away.
 		ItemStack weapon = VillagerFood.heldOutsideMeals(villager);
 		boolean allowed = weapon.is(Items.BOW) ? TownsfolkConfig.archerSentries
+			: weapon.is(Items.CROSSBOW) ? TownsfolkConfig.crossbowSentries
 			: weapon.is(ItemTags.AXES) ? TownsfolkConfig.axeSentries
 			: weapon.is(ItemTags.SPEARS) ? TownsfolkConfig.spearSentries
 			: TownsfolkConfig.swordSentries;
@@ -84,7 +90,8 @@ public final class Sentry {
 
 	/** Swords, axes and spears for close fighting, bows for shooting arrows from the Sentry's pockets. */
 	public static boolean isSentryWeapon(ItemStack stack) {
-		return stack.is(ItemTags.SWORDS) || stack.is(ItemTags.AXES) || stack.is(ItemTags.SPEARS) || stack.is(Items.BOW);
+		return stack.is(ItemTags.SWORDS) || stack.is(ItemTags.AXES) || stack.is(ItemTags.SPEARS) || stack.is(Items.BOW)
+			|| stack.is(Items.CROSSBOW);
 	}
 
 	private static double reachOf(ItemStack weapon) {
@@ -104,8 +111,9 @@ public final class Sentry {
 		return Math.max(1, (int) Math.round(TownsfolkConfig.sentrySwordCooldown * SWORD_SPEED / speed));
 	}
 
+	/** Bow and crossbow Sentries: both shoot arrows from their pockets. */
 	public static boolean isArcher(Villager villager) {
-		return villager.getMainHandItem().is(Items.BOW);
+		return villager.getMainHandItem().is(Items.BOW) || villager.getMainHandItem().is(Items.CROSSBOW);
 	}
 
 	/**
@@ -227,7 +235,10 @@ public final class Sentry {
 	 * arrows they cannot fight (a fletcher brings more).
 	 */
 	private static boolean shootAt(ServerLevel level, Villager villager, LivingEntity target, VillagerCommands.Command command) {
-		if (TownsfolkConfig.sentriesNeedArrows && !hasArrows(villager)) {
+		boolean crossbow = villager.getMainHandItem().is(Items.CROSSBOW);
+		// A loaded crossbow can still fire its last bolt with empty pockets.
+		boolean loaded = crossbow && CrossbowItem.isCharged(villager.getMainHandItem());
+		if (TownsfolkConfig.sentriesNeedArrows && !hasArrows(villager) && !loaded) {
 			lowerBow(villager);
 			return false;
 		}
@@ -244,6 +255,10 @@ public final class Sentry {
 		villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		villager.getNavigation().stop();
 		long now = level.getGameTime();
+		if (crossbow) {
+			crossbowTick(level, villager, target, inSight && distance <= bowRange, now);
+			return true;
+		}
 		int drawTicks = Math.min(BOW_DRAW_TICKS, TownsfolkConfig.sentryBowCooldown);
 		if (inSight && distance <= bowRange && !villager.isUsingItem() && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
 			// Start drawing; the arrow flies once the bow is fully drawn.
@@ -276,9 +291,57 @@ public final class Sentry {
 		return true;
 	}
 
-	/** Stops drawing the bow, if it was. */
+	/**
+	 * Crossbows work like a pillager's: load (vanilla plays the loading sounds while it is used), aim
+	 * for a moment with it loaded, then fire the bolt. The loaded arrow is taken from the pockets.
+	 */
+	private static void crossbowTick(ServerLevel level, Villager villager, LivingEntity target, boolean canShoot, long now) {
+		ItemStack crossbow = villager.getMainHandItem();
+		if (!CrossbowItem.isCharged(crossbow)) {
+			if (canShoot && !villager.isUsingItem() && now >= NEXT_ATTACK.getOrDefault(villager, 0L)) {
+				villager.startUsingItem(InteractionHand.MAIN_HAND);
+			}
+			if (villager.isUsingItem() && villager.getTicksUsingItem() >= CrossbowItem.getChargeDuration(crossbow, villager)) {
+				villager.stopUsingItem();
+				ItemStack bolt = TownsfolkConfig.sentriesNeedArrows ? takeArrow(villager) : new ItemStack(Items.ARROW);
+				crossbow.set(DataComponents.CHARGED_PROJECTILES, ChargedProjectiles.ofNonEmpty(List.of(bolt)));
+				level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.CROSSBOW_LOADING_END.value(),
+					SoundSource.NEUTRAL, 1.0F, 1.0F / (villager.getRandom().nextFloat() * 0.5F + 1.0F) + 0.2F);
+				NEXT_ATTACK.put(villager, now + CROSSBOW_AIM_TICKS);
+			}
+			return;
+		}
+		if (!canShoot || now < NEXT_ATTACK.getOrDefault(villager, 0L)) {
+			return;
+		}
+		ChargedProjectiles charged = crossbow.getOrDefault(DataComponents.CHARGED_PROJECTILES, ChargedProjectiles.EMPTY);
+		ItemStack bolt = charged.itemCopies().findFirst().orElseGet(() -> new ItemStack(Items.ARROW));
+		crossbow.set(DataComponents.CHARGED_PROJECTILES, ChargedProjectiles.EMPTY);
+		AbstractArrow arrow = ProjectileUtil.getMobArrow(villager, bolt, 1.0F, crossbow);
+		arrow.setSoundEvent(SoundEvents.CROSSBOW_HIT);
+		if (TownsfolkConfig.sentryDamageMultiplier != 1.0) {
+			arrow.setBaseDamage(2.0 * TownsfolkConfig.sentryDamageMultiplier);
+		}
+		double xd = target.getX() - villager.getX();
+		double yd = target.getY(0.3333333333333333) - arrow.getY();
+		double zd = target.getZ() - villager.getZ();
+		double flat = Math.sqrt(xd * xd + zd * zd);
+		// Same arrow speed as a pillager's crossbow, a little more accurate than a bow.
+		Projectile.spawnProjectileUsingShoot(arrow, level, bolt, xd, yd + flat * 0.2F, zd, CrossbowItem.MOB_ARROW_POWER, 3.0F);
+		level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.NEUTRAL,
+			1.0F, 1.0F / (villager.getRandom().nextFloat() * 0.5F + 1.8F) + 0.43F);
+		level.playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.VILLAGER_AMBIENT, SoundSource.NEUTRAL,
+			0.35F, 0.9F + villager.getRandom().nextFloat() * 0.2F);
+		if (TownsfolkConfig.sentryWeaponsWearOut) {
+			crossbow.hurtAndBreak(1, villager, EquipmentSlot.MAINHAND);
+		}
+		int chargeTicks = CrossbowItem.getChargeDuration(crossbow, villager);
+		NEXT_ATTACK.put(villager, now + Math.max(0, TownsfolkConfig.sentryBowCooldown - chargeTicks - CROSSBOW_AIM_TICKS));
+	}
+
+	/** Stops drawing a bow or loading a crossbow, if it was (a loaded crossbow stays loaded). */
 	private static void lowerBow(Villager villager) {
-		if (villager.isUsingItem() && villager.getUseItem().is(Items.BOW)) {
+		if (villager.isUsingItem() && (villager.getUseItem().is(Items.BOW) || villager.getUseItem().is(Items.CROSSBOW))) {
 			villager.stopUsingItem();
 		}
 	}

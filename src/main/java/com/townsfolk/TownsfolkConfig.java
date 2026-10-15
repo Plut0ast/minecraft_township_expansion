@@ -46,6 +46,7 @@ public final class TownsfolkConfig {
 	public static boolean axeSentries;
 	public static boolean spearSentries;
 	public static boolean archerSentries;
+	public static boolean crossbowSentries;
 	public static boolean sentryBodyguards;
 	public static boolean sentriesAttackEnemies;
 	public static boolean sentriesNeedArrows;
@@ -93,6 +94,7 @@ public final class TownsfolkConfig {
 		add("axeSentries", "true", "Nitwits holding an axe become Sentries (slower, harder hits, like a player's axe).");
 		add("spearSentries", "true", "Nitwits holding a spear become Sentries (a little more reach).");
 		add("archerSentries", "true", "Nitwits holding a bow become archer Sentries.");
+		add("crossbowSentries", "true", "Nitwits holding a crossbow become Sentries that load and fire it like a pillager.");
 		add("sentryBodyguards", "true", "A Sentry following a Hero of its town guards that player.");
 		add("sentriesAttackEnemies", "true", "Sentries attack players who are Enemies of their town (off = mobs only).");
 		add("sentriesNeedArrows", "true", "Archers use arrows from their pockets. Off = they never run out.");
@@ -165,6 +167,7 @@ public final class TownsfolkConfig {
 		axeSentries = bool(values, "axeSentries");
 		spearSentries = bool(values, "spearSentries");
 		archerSentries = bool(values, "archerSentries");
+		crossbowSentries = bool(values, "crossbowSentries");
 		sentryBodyguards = bool(values, "sentryBodyguards");
 		sentriesAttackEnemies = bool(values, "sentriesAttackEnemies");
 		sentriesNeedArrows = bool(values, "sentriesNeedArrows");

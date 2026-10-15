@@ -104,9 +104,9 @@ emeralds, and it comes back repaired with its enchantments kept.
 
 NITWITS, SENTRIES & GOLEMS
 --------------------------
-- Give a nitwit a sword, axe, spear or bow (you need to be Trusted) and it becomes a Sentry.
+- Give a nitwit a sword, axe, spear, bow or crossbow (you need to be Trusted) and it becomes a Sentry.
   Sentries fight hostile mobs in their town and attack the town's Enemies. Archers shoot
-  arrows from their pockets.
+  arrows from their pockets. Crossbow Sentries load and fire like pillagers.
 - A Sentry that follows a Hero becomes that Hero's bodyguard.
 - Nitwit babies need a nitwit parent: 50% with one nitwit parent, 100% with two. Two
   normal villagers never have a nitwit. Spawn eggs give a nitwit 20% of the time.
