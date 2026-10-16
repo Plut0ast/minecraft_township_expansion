@@ -256,11 +256,11 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		// Filled face while filtering to towns with players, hollow face otherwise.
 		this.filterButton.setMessage(Component.literal(this.playersOnly ? "☻" : "☺"));
 
-		boolean member = this.isMemberOfHome();
-		this.joinButton.setMessage(Component.translatable(home && member ? "gui.townsfolk.town_center.member" : "gui.townsfolk.town_center.join"));
-		this.joinButton.active = home && this.menu.canJoin();
+		boolean member = this.menu.isMember();
+		this.joinButton.setMessage(Component.translatable(home && member ? "gui.townsfolk.town_center.leave" : "gui.townsfolk.town_center.join"));
+		this.joinButton.active = home && (member || this.menu.canJoin());
 		String joinTip = !home ? "gui.townsfolk.town_center.join_elsewhere"
-			: member ? "gui.townsfolk.town_center.join_member"
+			: member ? "gui.townsfolk.town_center.leave_tooltip"
 			: this.menu.canJoin() ? "gui.townsfolk.town_center.join_tooltip"
 			: "gui.townsfolk.town_center.join_locked";
 		String current = this.currentTownElsewhere();
@@ -312,6 +312,10 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	}
 
 	private void join() {
+		if (this.viewingHome() && this.menu.isMember()) {
+			this.confirmLeave();
+			return;
+		}
 		if (!this.viewingHome() || !this.menu.canJoin()) {
 			return;
 		}
@@ -331,6 +335,23 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			return;
 		}
 		this.sendJoin();
+	}
+
+	/** Leaving a town is asked about first; either answer comes back here. */
+	private void confirmLeave() {
+		String name = this.menu.home().name();
+		this.minecraft.gui.setScreen(new ConfirmScreen(
+			yes -> {
+				this.minecraft.gui.setScreen(this);
+				if (yes) {
+					this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, TownCenterMenu.BUTTON_LEAVE);
+					this.menu.markLeft(this.minecraft.player.getName().getString());
+					this.refreshView();
+				}
+			},
+			Component.translatable("gui.townsfolk.town_center.leave_title", name),
+			Component.translatable("gui.townsfolk.town_center.leave_message", name)
+		));
 	}
 
 	private void sendJoin() {
@@ -500,7 +521,7 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 
 		Component where = this.viewingHome()
 			? Component.translatable("gui.townsfolk.town_center.here")
-			: Component.translatable("gui.townsfolk.town_center.distance", (int) Math.round(Math.sqrt(town.pos().distSqr(this.menu.pos()))));
+			: Component.translatable("gui.townsfolk.town_center.distance", (int) Math.round(Math.sqrt(town.pos().distSqr(this.menu.openedAt()))));
 		graphics.text(this.font, where, LIST_X + LIST_W - this.font.width(where), RANK_Y, Panels.TEXT_LIGHT, false);
 
 		Component toNext = next == null

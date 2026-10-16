@@ -3,6 +3,7 @@ package com.townsfolk.mixin;
 import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.town.RepairPayloads;
 import com.townsfolk.town.Sentry;
+import com.townsfolk.town.FollowerTravel;
 import com.townsfolk.town.TownCapes;
 import com.townsfolk.town.TownHiding;
 import com.townsfolk.town.TownArrival;
@@ -81,6 +82,7 @@ public abstract class VillagerMixin {
 	private void townsfolk$applyCommand(ServerLevel level, CallbackInfo ci) {
 		Villager villager = (Villager) (Object) this;
 		TownCapes.tickVillager(villager, level);
+		FollowerTravel.tick(villager, level);
 		if (Sentry.afterBrainTick(villager, level)) {
 			return;
 		}

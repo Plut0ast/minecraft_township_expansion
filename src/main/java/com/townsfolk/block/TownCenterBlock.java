@@ -2,6 +2,7 @@ package com.townsfolk.block;
 
 import com.townsfolk.ModRegistry;
 import com.townsfolk.town.TownCenters;
+import com.townsfolk.town.TownRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -41,12 +42,31 @@ public class TownCenterBlock extends BaseEntityBlock {
 			return;
 		}
 
-		String founded = "";
-		String left = "";
-		if (level.getBlockEntity(pos) instanceof TownCenterBlockEntity town) {
-			left = town.found(player);
-			founded = town.townName();
+		if (!(level.getBlockEntity(pos) instanceof TownCenterBlockEntity town)) {
+			return;
 		}
+		// Players of a town add Town Centers to it; founding a new town means leaving yours first.
+		BlockPos current = TownRegistry.get(serverLevel).townOf(player.getUUID());
+		if (current != null && !current.equals(pos) && serverLevel.getBlockEntity(current) instanceof TownCenterBlockEntity main && !main.isBranch()) {
+			town.attachTo(current);
+			player.sendSystemMessage(Component.translatable("message.townsfolk.town_center.branch", main.townName()), true);
+			return;
+		}
+		String elsewhere = townNameElsewhere(serverLevel, player);
+		if (elsewhere != null) {
+			// A player of a town in another dimension: not founded here; the block goes back to them.
+			serverLevel.removeBlock(pos, false);
+			if (!player.isCreative()) {
+				ItemStack refund = itemStack.copyWithCount(1);
+				if (!player.getInventory().add(refund)) {
+					player.spawnAtLocation(serverLevel, refund);
+				}
+			}
+			player.sendSystemMessage(Component.translatable("message.townsfolk.town_center.leave_first", elsewhere), true);
+			return;
+		}
+		String left = town.found(player);
+		String founded = town.townName();
 
 		// Shown above the hotbar rather than in chat.
 		TownCenterBlockEntity nearest = TownCenters.nearestOtherTown(serverLevel, pos);
@@ -61,6 +81,22 @@ public class TownCenterBlock extends BaseEntityBlock {
 			message = Component.translatable("message.townsfolk.town_center.founded_left", message, left);
 		}
 		player.sendSystemMessage(message, true);
+	}
+
+	/** The name of a town the player belongs to in another dimension, or null. */
+	private static @Nullable String townNameElsewhere(ServerLevel here, ServerPlayer player) {
+		for (ServerLevel level : here.getServer().getAllLevels()) {
+			if (level == here) {
+				continue;
+			}
+			TownRegistry registry = TownRegistry.get(level);
+			BlockPos town = registry.townOf(player.getUUID());
+			if (town != null) {
+				TownRegistry.Town data = registry.town(town);
+				return data == null ? "" : data.name();
+			}
+		}
+		return null;
 	}
 
 	@Override

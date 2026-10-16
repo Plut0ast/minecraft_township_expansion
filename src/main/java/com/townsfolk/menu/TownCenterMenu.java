@@ -35,6 +35,7 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	public static final int INVENTORY_Y = 144;
 	private static final Identifier EMPTY_BANNER_ICON = Identifier.withDefaultNamespace("container/slot/banner");
 	public static final int BUTTON_JOIN = 0;
+	public static final int BUTTON_LEAVE = 1;
 	/**
 	 * Button ids from here up set how the opened town treats another town: (id - this) / 3 is the town's
 	 * index in {@link #towns()}, (id - this) % 3 the relation.
@@ -90,13 +91,17 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	 * of the opened town and not yet one of its players. {@code canRemove}: the viewer is a Trusted
 	 * member and may remove villagers. {@code homeVillagerIds} matches the opened town's villager list.
 	 */
-	public record Data(List<TownView> towns, boolean canRename, boolean canJoin, boolean canRemove, List<UUID> homeVillagerIds) {
+	public record Data(List<TownView> towns, boolean canRename, boolean canJoin, boolean canRemove, List<UUID> homeVillagerIds,
+		BlockPos openedAt, boolean member) {
+		/** {@code openedAt}: the Town Center block being used (one of the town's branches, or its main one). */
 		public static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
 			TownView.STREAM_CODEC.apply(ByteBufCodecs.list()), Data::towns,
 			ByteBufCodecs.BOOL, Data::canRename,
 			ByteBufCodecs.BOOL, Data::canJoin,
 			ByteBufCodecs.BOOL, Data::canRemove,
 			UUIDUtil.STREAM_CODEC.apply(ByteBufCodecs.list()), Data::homeVillagerIds,
+			BlockPos.STREAM_CODEC, Data::openedAt,
+			ByteBufCodecs.BOOL, Data::member,
 			Data::new
 		);
 	}
@@ -106,6 +111,8 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	private boolean canJoin;
 	private final boolean canRemove;
 	private final List<UUID> homeVillagerIds;
+	private final BlockPos openedAt;
+	private boolean member;
 	/** Client side: false while the screen shows another town, which hides the opened town's banner slot. */
 	private boolean showingHome = true;
 
@@ -121,6 +128,8 @@ public class TownCenterMenu extends AbstractContainerMenu {
 		this.canJoin = data.canJoin();
 		this.canRemove = data.canRemove();
 		this.homeVillagerIds = new ArrayList<>(data.homeVillagerIds());
+		this.openedAt = data.openedAt();
+		this.member = data.member();
 		this.addSlot(new BannerSlot(banner, data.canRename()));
 		this.addStandardInventorySlots(inventory, 8, INVENTORY_Y);
 	}
@@ -201,6 +210,26 @@ public class TownCenterMenu extends AbstractContainerMenu {
 		return this.canJoin;
 	}
 
+	/** True when the viewer is one of the opened town's players. */
+	public boolean isMember() {
+		return this.member;
+	}
+
+	/** The Town Center block being used: one of the town's branches, or its main one. */
+	public BlockPos openedAt() {
+		return this.openedAt;
+	}
+
+	/** Client side: drop the viewer from the opened town's players straight after leaving. */
+	public void markLeft(String playerName) {
+		List<String> players = new ArrayList<>(this.home().players());
+		players.remove(playerName);
+		TownView home = this.home();
+		this.towns.set(0, new TownView(home.pos(), home.name(), home.villagers(), home.villagerJobs(), home.golems(), players,
+			home.reputation(), home.banner(), home.relation()));
+		this.member = false;
+	}
+
 	/** Client side: show a saved rename straight away rather than waiting to reopen the menu. */
 	public void setTownName(String townName) {
 		this.towns.set(0, this.home().withName(townName));
@@ -220,6 +249,7 @@ public class TownCenterMenu extends AbstractContainerMenu {
 		}
 		this.towns.set(0, this.home().withPlayer(playerName));
 		this.canJoin = false;
+		this.member = true;
 	}
 
 	@Override
@@ -230,6 +260,18 @@ public class TownCenterMenu extends AbstractContainerMenu {
 		}
 		if (buttonId >= BUTTON_REMOVE_FIRST) {
 			return this.removeVillager(player, buttonId - BUTTON_REMOVE_FIRST);
+		}
+		if (buttonId == BUTTON_LEAVE) {
+			if (!this.member) {
+				return false;
+			}
+			if (!player.level().isClientSide()) {
+				if (!(player.level().getBlockEntity(this.pos()) instanceof TownCenterBlockEntity town) || !town.leave(player)) {
+					return false;
+				}
+				this.member = false;
+			}
+			return true;
 		}
 		if (buttonId != BUTTON_JOIN || !this.canJoin) {
 			return false;
@@ -302,7 +344,7 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean stillValid(Player player) {
-		return player.level().getBlockState(this.pos()).is(ModRegistry.TOWN_CENTER)
-			&& player.isWithinBlockInteractionRange(this.pos(), 4.0);
+		return player.level().getBlockState(this.openedAt).is(ModRegistry.TOWN_CENTER)
+			&& player.isWithinBlockInteractionRange(this.openedAt, 4.0);
 	}
 }

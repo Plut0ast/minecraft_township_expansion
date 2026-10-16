@@ -64,7 +64,8 @@ Hitting one of its villagers costs 5, and killing one costs another 25.
   Trusted    150+          Give villagers orders, rename the town, arm nitwits
   Hero       400+          Join the town, and Sentries guard you
 Only the town's players can change its villagers' gear and pockets (Sentries too).
-You can only be a player of one town: joining or founding another one leaves your old town.
+You can only be a player of one town. Placing a Town Center while you are in a town adds it
+to your town (its area grows); to found a new town, use Leave at your Town Center first.
 
 
 VILLAGERS
@@ -77,7 +78,10 @@ VILLAGERS
   it to heal, then goes back to holding what it had. (The optional food slot setting adds
   starting bread and trips to farmers and butchers for more.)
 - Orders (Trusted): Wandering, Staying, Following, and Farming for farmers. Followers go
-  back to Wandering if the player they follow logs off.
+  back to Wandering if the player they follow logs off. Followers never get left behind
+  (flying, pearls, teleports) and come with you through portals to other dimensions.
+- Town alerts: a town's players get a message above the hotbar when one of its villagers
+  dies (and what killed it), a raid starts there, or an enemy player arrives.
 - Villagers with worn-out gear walk to the right smith to get it repaired.
 
 Trades and your standing:

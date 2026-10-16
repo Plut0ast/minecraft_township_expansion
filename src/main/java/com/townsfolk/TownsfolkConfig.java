@@ -63,6 +63,8 @@ public final class TownsfolkConfig {
 	public static boolean generateTownCenters;
 	public static boolean farmChests;
 	public static boolean golemsAttackEnemies;
+	public static boolean followersTravel;
+	public static boolean townAlerts;
 	// Reputation
 	public static int reputationPerTrade;
 	public static int reputationLostPerHit;
@@ -110,6 +112,8 @@ public final class TownsfolkConfig {
 		add("playerCapes", "true", "Players who have joined a town wear its banner as a cape (in place of their own cape).");
 		add("generateTownCenters", "true", "Villages get a Town Center automatically when a player first visits.");
 		add("farmChests", "true", "Village farms get a chest with starter seeds.");
+		add("followersTravel", "true", "Following villagers keep their chunk loaded so they are never left behind, and follow their player to other dimensions.");
+		add("townAlerts", "true", "A town's players get a message above the hotbar when one of its villagers dies, a raid starts there, or an enemy player enters.");
 		add("golemsAttackEnemies", "true", "A town's iron golems attack players who are its Enemies.");
 		section("Reputation");
 		add("reputationPerTrade", "1", "Reputation gained with a town for each trade with one of its villagers.");
@@ -185,6 +189,8 @@ public final class TownsfolkConfig {
 		generateTownCenters = bool(values, "generateTownCenters");
 		farmChests = bool(values, "farmChests");
 		golemsAttackEnemies = bool(values, "golemsAttackEnemies");
+		followersTravel = bool(values, "followersTravel");
+		townAlerts = bool(values, "townAlerts");
 		reputationPerTrade = integer(values, "reputationPerTrade");
 		reputationLostPerHit = integer(values, "reputationLostPerHit");
 		reputationLostPerKill = integer(values, "reputationLostPerKill");

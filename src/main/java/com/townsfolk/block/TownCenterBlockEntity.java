@@ -41,6 +41,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import org.jspecify.annotations.Nullable;
 
 public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuProvider<TownCenterMenu.Data> {
 	/** Villagers and iron golems within this many blocks that have no town yet join this one. */
@@ -61,6 +62,12 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 	private String townName = "";
 	/** Game time this town was founded; newer towns win members that have no town yet. -1 until first tick. */
 	private long foundedAt = -1;
+	/**
+	 * Set when this Town Center is an extra one for an existing town (placed by one of its players): the
+	 * position of that town's main Town Center. A branch claims villagers and golems around itself for
+	 * that town and opens that town's page; it has no name, residents or banner of its own.
+	 */
+	private @Nullable BlockPos mainTown;
 	/** The town's banner, shown on every Town Center screen that views this town. */
 	private final SimpleContainer banner = new SimpleContainer(1) {
 		@Override
@@ -79,7 +86,45 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		return this.banner;
 	}
 
+	public boolean isBranch() {
+		return this.mainTown != null;
+	}
+
+	/** The town this Town Center belongs to: its own position, or its main Town Center's for a branch. */
+	public BlockPos townPos() {
+		return this.mainTown != null ? this.mainTown : this.worldPosition;
+	}
+
+	/** The town's main Town Center (this one unless it is a branch); null if that cannot be found. */
+	public @Nullable TownCenterBlockEntity mainTownCenter() {
+		if (this.mainTown == null) {
+			return this;
+		}
+		return this.level != null && this.level.getBlockEntity(this.mainTown) instanceof TownCenterBlockEntity main && !main.isRemoved()
+			? main
+			: null;
+	}
+
+	/** Makes this a branch of the town whose main Town Center is at {@code main}. */
+	public void attachTo(BlockPos main) {
+		this.mainTown = main.immutable();
+		this.setChanged();
+	}
+
 	public static void serverTick(Level level, BlockPos pos, BlockState state, TownCenterBlockEntity townCenter) {
+		if (townCenter.mainTown != null) {
+			// A branch whose main Town Center has been broken carries on as a town of its own.
+			if (level instanceof ServerLevel serverLevel && TownCenters.isDestroyed(serverLevel, townCenter.mainTown)) {
+				townCenter.mainTown = null;
+				townCenter.foundedAt = level.getGameTime();
+				townCenter.setChanged();
+			} else {
+				if ((level.getGameTime() + pos.asLong()) % CLAIM_INTERVAL_TICKS == 0) {
+					townCenter.refreshResidents();
+				}
+				return;
+			}
+		}
 		if (townCenter.foundedAt < 0) {
 			townCenter.foundedAt = level.getGameTime();
 			townCenter.setChanged();
@@ -111,7 +156,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 
 	/** Keeps this town's entry in the dimension's {@link TownRegistry} current, for browsing from other towns. */
 	private void syncRegistry() {
-		if (this.level instanceof ServerLevel serverLevel) {
+		if (this.level instanceof ServerLevel serverLevel && this.mainTown == null) {
 			TownRegistry.get(serverLevel).update(this.worldPosition, this.townName(), this.names(false), this.villagerJobs(), this.names(true),
 				this.banner.getItem(0));
 		}
@@ -136,14 +181,18 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			return "";
 		}
 		this.syncRegistry();
-		// The new town starts out treating other towns the way the founder's old town did.
-		BlockPos oldTown = TownRegistry.get(serverLevel).townOf(founder.getUUID());
-		if (oldTown != null && !oldTown.equals(this.worldPosition)) {
-			TownRelations.get(serverLevel).copy(oldTown, this.worldPosition);
-		}
 		String left = TownRegistry.leaveAllTowns(serverLevel.getServer(), founder.getUUID());
 		TownRegistry.get(serverLevel).addMember(this.worldPosition, founder.getUUID(), founder.getName().getString());
 		return left;
+	}
+
+	/** A player of this town leaves it (to found or join another). Returns whether they were one. */
+	public boolean leave(Player player) {
+		if (!(this.level instanceof ServerLevel serverLevel) || !this.isMember(player)) {
+			return false;
+		}
+		TownRegistry.leaveAllTowns(serverLevel.getServer(), player.getUUID());
+		return true;
 	}
 
 	/** Heroes of this town may join it as players. Returns whether the player joined. */
@@ -176,6 +225,11 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			return;
 		}
 
+		TownCenterBlockEntity main = this.mainTownCenter();
+		if (main == null) {
+			return;
+		}
+		BlockPos townPos = this.townPos();
 		boolean changed = false;
 		AABB area = new AABB(this.worldPosition).inflate(CLAIM_RADIUS);
 		for (Mob member : serverLevel.getEntitiesOfClass(Mob.class, area, m -> m.isAlive() && TownCenters.canJoinTown(m))) {
@@ -186,33 +240,36 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			}
 			BlockPos barred = member instanceof Villager villager ? TownExile.barredTown(villager, serverLevel) : null;
 			if (town == null && this.worldPosition.equals(TownCenters.townFor(serverLevel, member.blockPosition(), barred))) {
-				member.setAttached(ModRegistry.TOWN, this.worldPosition);
+				member.setAttached(ModRegistry.TOWN, townPos);
 				member.removeAttached(ModRegistry.EXILE);
 				if (member instanceof Villager villager) {
 					TownArrival.start(villager, serverLevel);
 				}
-				town = this.worldPosition;
+				town = townPos;
 			}
 
-			if (this.worldPosition.equals(town)) {
+			if (townPos.equals(town)) {
 				String job = member instanceof Villager villager ? TownEvents.jobKey(villager) : "";
 				Resident resident = new Resident(member.getUUID(), VillagerNames.nameOf(member), member instanceof IronGolem, job);
-				if (!resident.equals(this.residents.put(member.getUUID(), resident))) {
+				if (!resident.equals(main.residents.put(member.getUUID(), resident))) {
 					changed = true;
 				}
 			}
 		}
 
 		if (changed) {
-			this.setChanged();
+			main.setChanged();
 		}
-		this.syncRegistry();
+		main.syncRegistry();
 	}
 
 	/** When this Town Center is broken, its members become free to join another town and its reputation is lost. */
 	@Override
 	public void preRemoveSideEffects(BlockPos pos, BlockState state) {
 		super.preRemoveSideEffects(pos, state);
+		if (this.mainTown != null) {
+			return; // a branch: the town carries on at its main Town Center
+		}
 		if (this.level instanceof ServerLevel serverLevel) {
 			Containers.dropContents(serverLevel, pos, this.banner);
 			TownReputation.get(serverLevel).clear(pos);
@@ -264,6 +321,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		this.residents.clear();
 		input.listOrEmpty("residents", Resident.CODEC).forEach(r -> this.residents.put(r.uuid(), r));
 		this.banner.setItem(0, input.read("banner", ItemStack.CODEC).orElse(ItemStack.EMPTY));
+		this.mainTown = input.read("main_town", BlockPos.CODEC).orElse(null);
 	}
 
 	@Override
@@ -276,6 +334,9 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		if (!this.banner.getItem(0).isEmpty()) {
 			output.store("banner", ItemStack.CODEC, this.banner.getItem(0));
 		}
+		if (this.mainTown != null) {
+			output.store("main_town", BlockPos.CODEC, this.mainTown);
+		}
 	}
 
 	@Override
@@ -285,11 +346,15 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 
 	@Override
 	public TownCenterMenu.Data getScreenOpeningData(ServerPlayer player) {
-		return this.menuData(player);
+		TownCenterBlockEntity main = this.mainTownCenter();
+		return (main != null ? main : this).menuData(player, this.worldPosition);
 	}
 
-	/** This town first, then every other town in the dimension, nearest first. */
-	private TownCenterMenu.Data menuData(Player player) {
+	/**
+	 * This town first, then every other town in the dimension, nearest first. {@code openedAt} is the
+	 * Town Center block the player is using (a branch, or this one).
+	 */
+	private TownCenterMenu.Data menuData(Player player, BlockPos openedAt) {
 		List<TownCenterMenu.TownView> towns = new ArrayList<>();
 		if (this.level instanceof ServerLevel serverLevel) {
 			this.syncRegistry();
@@ -329,11 +394,13 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		TownCenterMenu.TownView home = towns.getFirst();
 		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, villagerJobs, home.golems(), home.players(), home.reputation(),
 			this.banner.getItem(0), home.relation()));
-		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin, canRemove, villagerIds);
+		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin, canRemove, villagerIds, openedAt, this.isMember(player));
 	}
 
 	@Override
 	public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
-		return new TownCenterMenu(containerId, inventory, this.menuData(player), this.banner);
+		TownCenterBlockEntity main = this.mainTownCenter();
+		TownCenterBlockEntity town = main != null ? main : this;
+		return new TownCenterMenu(containerId, inventory, town.menuData(player, this.worldPosition), town.banner);
 	}
 }

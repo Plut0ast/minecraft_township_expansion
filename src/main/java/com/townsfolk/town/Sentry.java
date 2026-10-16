@@ -222,7 +222,7 @@ public final class Sentry {
 			return false;
 		}
 		// Guarding the town (not a Hero): only fight inside the town's area.
-		return hero != null || target.position().distanceTo(Vec3.atCenterOf(town)) <= TownCenterBlockEntity.CLAIM_RADIUS;
+		return hero != null || TownCenters.isInTownArea(level, town, target.blockPosition());
 	}
 
 	/**

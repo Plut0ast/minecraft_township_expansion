@@ -147,7 +147,7 @@ public final class VillagerCommands {
 			return;
 		}
 
-		// Staying, or following an owner who is in another dimension: stand still.
+		// Staying, or following an owner in another dimension (FollowerTravel brings it along): stand still.
 		brain.eraseMemory(MemoryModuleType.WALK_TARGET);
 		villager.getNavigation().stop();
 	}

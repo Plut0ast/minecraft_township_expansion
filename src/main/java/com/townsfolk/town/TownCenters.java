@@ -110,6 +110,35 @@ public final class TownCenters {
 			.orElse(null);
 	}
 
+	/** True when {@code pos} is within reach of the town's main Town Center or any of its loaded branches. */
+	public static boolean isInTownArea(ServerLevel level, BlockPos town, BlockPos pos) {
+		double reach = (double) TownCenterBlockEntity.CLAIM_RADIUS * TownCenterBlockEntity.CLAIM_RADIUS;
+		if (town.distSqr(pos) <= reach) {
+			return true;
+		}
+		for (TownCenterBlockEntity center : townsNear(level, pos, null)) {
+			if (center.townPos().equals(town) && center.getBlockPos().distSqr(pos) <= reach) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Every loaded Town Center (main ones and branches) in the dimension. */
+	public static List<TownCenterBlockEntity> loaded(ServerLevel level) {
+		Set<BlockPos> positions = LOADED.get(level.dimension());
+		List<TownCenterBlockEntity> towns = new ArrayList<>();
+		if (positions == null) {
+			return towns;
+		}
+		for (BlockPos pos : positions) {
+			if (level.getBlockEntity(pos) instanceof TownCenterBlockEntity town && !town.isRemoved()) {
+				towns.add(town);
+			}
+		}
+		return towns;
+	}
+
 	/** Villagers and iron golems can belong to a town. */
 	public static boolean canJoinTown(Mob mob) {
 		return mob instanceof Villager || mob instanceof IronGolem;

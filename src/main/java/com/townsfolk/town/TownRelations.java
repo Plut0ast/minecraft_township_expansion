@@ -79,21 +79,6 @@ public class TownRelations extends SavedData {
 		this.setDirty();
 	}
 
-	/** Gives the town at {@code to} the same stances as the town at {@code from} (skipping one on itself). */
-	public void copy(BlockPos from, BlockPos to) {
-		Map<String, Relation> source = this.stances.get(key(from));
-		if (source == null || source.isEmpty()) {
-			return;
-		}
-		Map<String, Relation> target = this.stances.computeIfAbsent(key(to), k -> new HashMap<>());
-		source.forEach((town, relation) -> {
-			if (!town.equals(key(to))) {
-				target.put(town, relation);
-			}
-		});
-		this.setDirty();
-	}
-
 	/** A broken Town Center's stances, and every stance on it, are forgotten. */
 	public void clear(BlockPos pos) {
 		boolean changed = this.stances.remove(key(pos)) != null;

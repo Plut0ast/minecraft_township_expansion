@@ -70,5 +70,16 @@
   "gui.townsfolk.town_center.relation.enemy.tooltip": "%s treats %s as an enemy: its villagers hide from them, and its iron golems and Sentries attack them. Click to change.",
   "gui.townsfolk.town_center.relation.neutral.tooltip": "%s is neutral towards %s: its golems and Sentries only fight back if hit. Click to change.",
   "gui.townsfolk.town_center.relation.good.tooltip": "%s is on good terms with %s: its golems and Sentries never attack them. Click to change.",
-  "gui.townsfolk.town_center.relation.locked": "Reach Trusted with this Town Center's town to choose how it treats other towns"
+  "gui.townsfolk.town_center.relation.locked": "Reach Trusted with this Town Center's town to choose how it treats other towns",
+  "gui.townsfolk.town_center.leave": "Leave",
+  "gui.townsfolk.town_center.leave_tooltip": "Leave this town. You need to leave your town before you can found a new one.",
+  "gui.townsfolk.town_center.leave_title": "Are you sure you want to leave %s?",
+  "gui.townsfolk.town_center.leave_message": "You will no longer be one of %s's players. Placing a Town Center after this founds a new town.",
+  "message.townsfolk.town_center.branch": "Added a Town Center to %s",
+  "message.townsfolk.town_center.leave_first": "Leave %s before founding a new town",
+  "message.townsfolk.alert.died": "%s: %s has died",
+  "message.townsfolk.alert.killed": "%s: %s was killed by %s",
+  "message.townsfolk.alert.raid": "%s: a raid has started!",
+  "message.townsfolk.alert.enemy_town": "%s: %s of %s (an enemy town) has arrived",
+  "message.townsfolk.alert.enemy_player": "%s: %s, an Enemy of the town, has arrived"
 }

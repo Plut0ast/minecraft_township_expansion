@@ -19,6 +19,8 @@ public class Townsfolk implements ModInitializer {
 		TownsfolkConfig.load();
 		com.townsfolk.town.TownCapes.register();
 		com.townsfolk.town.TownBellGlow.register();
+		com.townsfolk.town.FollowerTravel.register();
+		com.townsfolk.town.TownAlerts.register();
 		ModRegistry.init();
 		TownEvents.init();
 		RenameTownPayload.register();

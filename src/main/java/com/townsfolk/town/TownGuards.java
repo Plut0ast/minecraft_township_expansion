@@ -39,7 +39,7 @@ public final class TownGuards {
 				continue;
 			}
 			for (TownCenterBlockEntity town : TownCenters.townsNear(level, player.blockPosition(), null)) {
-				BlockPos townPos = town.getBlockPos();
+				BlockPos townPos = town.townPos();
 				if (TownReputation.Rank.of(reputation.get(townPos, player.getUUID())) != TownReputation.Rank.ENEMY) {
 					continue;
 				}
