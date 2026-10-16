@@ -15,6 +15,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -75,6 +76,9 @@ public final class TownEvents {
 			if (entity instanceof Villager villager && villager.level() instanceof ServerLevel level) {
 				VillagerFood.onDeath(villager, level);
 			}
+			if (entity instanceof AbstractVillager villager && villager.level() instanceof ServerLevel level) {
+				dropCarried(villager, level);
+			}
 		});
 
 		// Right-click trades as normal; shift-right-click (or right-clicking someone with nothing to trade) opens the view page.
@@ -90,6 +94,27 @@ public final class TownEvents {
 			}
 			return InteractionResult.SUCCESS;
 		});
+	}
+
+	/**
+	 * A dead villager (or wandering trader) drops everything it carried: its pockets and food slot.
+	 * Player-given armour and hand items already drop on their own, as guaranteed drops.
+	 */
+	private static void dropCarried(AbstractVillager villager, ServerLevel level) {
+		SimpleContainer pockets = villager.getInventory();
+		for (int i = 0; i < pockets.getContainerSize(); i++) {
+			ItemStack stack = pockets.removeItemNoUpdate(i);
+			if (!stack.isEmpty()) {
+				villager.spawnAtLocation(level, stack);
+			}
+		}
+		if (villager instanceof Villager v) {
+			ItemStack food = VillagerFood.get(v);
+			if (!food.isEmpty()) {
+				villager.spawnAtLocation(level, food.copy());
+				VillagerFood.set(v, ItemStack.EMPTY);
+			}
+		}
 	}
 
 	/** Items with their own villager interaction (renaming, leashing, spawn eggs) keep vanilla behaviour. */

@@ -2,7 +2,9 @@ package com.townsfolk.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
@@ -12,6 +14,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.resources.model.EquipmentAssetManager;
 import net.minecraft.client.resources.model.EquipmentClientInfo;
 import net.minecraft.client.resources.model.sprite.SpriteGetter;
@@ -56,24 +59,35 @@ public class PlayerBannerCapeLayer extends RenderLayer<AvatarRenderState, Player
 		poseStack.popPose();
 	}
 
-	/** The player's body with only the banner cape on it, posed like {@code PlayerCapeModel}. */
-	private static class CapeModel extends PlayerModel {
-		private final ModelPart cape = BannerCapes.cape(this.body);
+	/**
+	 * Only a body pivot with the banner cape on it, posed like {@code PlayerCapeModel}. It holds no other
+	 * parts of the player, so nothing but the cape can ever be drawn with the banner's texture.
+	 */
+	private static class CapeModel extends Model<AvatarRenderState> {
+		private final ModelPart body;
+		private final ModelPart cape;
 
 		CapeModel(ModelPart root) {
-			super(root, false);
+			super(root, RenderTypes::entitySolid);
+			this.body = root.getChild("body");
+			this.cape = BannerCapes.cape(this.body);
 		}
 
 		static LayerDefinition createLayer() {
-			MeshDefinition mesh = PlayerModel.createMesh(CubeDeformation.NONE, false);
-			PartDefinition root = mesh.getRoot().clearRecursively();
-			BannerCapes.addCape(root.getChild("body"), 2.0F);
+			MeshDefinition mesh = new MeshDefinition();
+			PartDefinition body = mesh.getRoot().addOrReplaceChild("body", CubeListBuilder.create(), PartPose.ZERO);
+			BannerCapes.addCape(body, 2.0F);
 			return LayerDefinition.create(mesh, 64, 64);
 		}
 
 		@Override
 		public void setupAnim(AvatarRenderState state) {
 			super.setupAnim(state);
+			// The body leans and drops when crouching, as in HumanoidModel.
+			if (state.isCrouching) {
+				this.body.xRot = 0.5F;
+				this.body.y += 3.2F;
+			}
 			this.cape.rotateBy(new Quaternionf()
 				.rotateY((float) -Math.PI)
 				.rotateX((6.0F + state.capeLean / 2.0F + state.capeFlap) * (float) (Math.PI / 180.0))

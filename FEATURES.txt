@@ -12,7 +12,7 @@ TOWNS
 - Every village gets a Town Center by its bell. You can also craft your own and found a
   town anywhere.
 - Each town gets a name, like Oakhollow or Ravenmere.
-- Villagers and iron golems within 64 blocks join the newest Town Center nearby. When a
+- Villagers and iron golems within 64 blocks join the closest Town Center. When a
   villager joins, it walks to the Town Center and celebrates.
 - Placing a Town Center tells you what you founded and how far away the nearest other
   town is.

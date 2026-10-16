@@ -228,14 +228,9 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		return this.rankOf(player).ordinal() >= TownReputation.Rank.TRUSTED.ordinal();
 	}
 
-	/** Newer towns sort higher; a town that has not ticked yet was placed just now, so it is the newest. */
-	public long foundedAt() {
-		return this.foundedAt < 0 ? Long.MAX_VALUE : this.foundedAt;
-	}
-
 	/**
 	 * Claims nearby villagers and iron golems without a town and refreshes the names of loaded residents.
-	 * A member without a town joins the newest town whose area it is in, so it may be left for another town.
+	 * A member without a town joins the closest Town Center whose area it is in, so it may be left for another one.
 	 */
 	public void refreshResidents() {
 		if (!(this.level instanceof ServerLevel serverLevel)) {
