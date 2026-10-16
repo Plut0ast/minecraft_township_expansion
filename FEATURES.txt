@@ -52,7 +52,11 @@ The Town Center screen shows:
 
 REPUTATION
 ----------
-Each town remembers you separately. Every trade with one of its villagers earns +1.
+Each town remembers you separately. You earn reputation with a town by:
+  - trading with its villagers (+1 a trade)
+  - killing hostile mobs in its area (+1, up to 10 a day)
+  - helping win a raid on it (+50)
+  - curing a zombie villager that then joins it (+15)
 Hitting one of its villagers costs 5, and killing one costs another 25.
 
   Rank       Reputation    What it unlocks
@@ -60,10 +64,11 @@ Hitting one of its villagers costs 5, and killing one costs another 25.
   Enemy      -10 or less   Iron golems and Sentries attack you
   Stranger   -9 to 9       You can still feed villagers
   Visitor    10+
-  Friend     50+           Rename villagers
-  Trusted    150+          Give villagers orders, rename the town, arm nitwits
-  Hero       400+          Join the town, and Sentries guard you
-Only the town's players can change its villagers' gear and pockets (Sentries too).
+  Friend     40+           Rename villagers
+  Trusted    120+          Give orders, rename the town, arm nitwits, change villagers'
+                           gear and pockets, join the town, Sentries guard you
+  Hero       300+          Cheaper trades with every villager in the town
+The town's players can always change its villagers' gear and pockets (Sentries too).
 You can only be a player of one town. Placing a Town Center while you are in a town adds it
 to your town (its area grows); to found a new town, use Leave at your Town Center first.
 

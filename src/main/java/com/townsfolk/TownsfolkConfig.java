@@ -67,6 +67,11 @@ public final class TownsfolkConfig {
 	public static boolean townAlerts;
 	// Reputation
 	public static int reputationPerTrade;
+	public static int reputationPerMobKill;
+	public static int mobKillDailyLimit;
+	public static int reputationPerRaidWin;
+	public static int reputationPerCure;
+	public static double heroTradeDiscount;
 	public static int reputationLostPerHit;
 	public static int reputationLostPerKill;
 
@@ -97,12 +102,12 @@ public final class TownsfolkConfig {
 		add("spearSentries", "true", "Nitwits holding a spear become Sentries (a little more reach).");
 		add("archerSentries", "true", "Nitwits holding a bow become archer Sentries.");
 		add("crossbowSentries", "true", "Nitwits holding a crossbow become Sentries that load and fire it like a pillager.");
-		add("sentryBodyguards", "true", "A Sentry following a Hero of its town guards that player.");
+		add("sentryBodyguards", "true", "A Sentry following a player its town trusts guards that player.");
 		add("sentriesAttackEnemies", "true", "Sentries attack players who are Enemies of their town (off = mobs only).");
 		add("sentriesNeedArrows", "true", "Archers use arrows from their pockets. Off = they never run out.");
 		add("sentryWeaponsWearOut", "true", "Sentries' swords and bows lose durability when used.");
 		add("sentryGuardRadius", "16", "How far (in blocks) a Sentry looks for trouble while guarding its town.");
-		add("sentryBodyguardRadius", "12", "How far (in blocks) around its Hero a bodyguard Sentry looks for trouble.");
+		add("sentryBodyguardRadius", "12", "How far (in blocks) around the player it guards a bodyguard Sentry looks for trouble.");
 		add("sentryBowRange", "14", "How far (in blocks) archer Sentries shoot from.");
 		add("sentryDamageMultiplier", "1.0", "Multiplies Sentries' sword and arrow damage (1.0 = same as a player).");
 		add("sentrySwordCooldown", "20", "Ticks between sword hits (20 ticks = 1 second). Axes and spears scale this by their attack speed.");
@@ -117,6 +122,11 @@ public final class TownsfolkConfig {
 		add("golemsAttackEnemies", "true", "A town's iron golems attack players who are its Enemies.");
 		section("Reputation");
 		add("reputationPerTrade", "1", "Reputation gained with a town for each trade with one of its villagers.");
+		add("reputationPerMobKill", "1", "Reputation gained with a town for killing a hostile mob in its area.");
+		add("mobKillDailyLimit", "10", "How many mob kills a day earn reputation with each town.");
+		add("reputationPerRaidWin", "50", "Reputation gained with a town by each player who helped win a raid on it.");
+		add("reputationPerCure", "15", "Reputation gained with a town for curing a zombie villager that then joins it.");
+		add("heroTradeDiscount", "0.3", "How much cheaper (0.3 = 30% off the first item) trades are for Heroes of a town, with every villager in it.");
 		add("reputationLostPerHit", "5", "Reputation lost for each hit on one of a town's villagers.");
 		add("reputationLostPerKill", "25", "Extra reputation lost for killing one of a town's villagers.");
 	}
@@ -193,6 +203,11 @@ public final class TownsfolkConfig {
 		townAlerts = bool(values, "townAlerts");
 		reputationPerTrade = integer(values, "reputationPerTrade");
 		reputationLostPerHit = integer(values, "reputationLostPerHit");
+		reputationPerMobKill = Math.max(0, integer(values, "reputationPerMobKill"));
+		mobKillDailyLimit = Math.max(0, integer(values, "mobKillDailyLimit"));
+		reputationPerRaidWin = Math.max(0, integer(values, "reputationPerRaidWin"));
+		reputationPerCure = Math.max(0, integer(values, "reputationPerCure"));
+		heroTradeDiscount = Math.min(1.0, Math.max(0.0, decimal(values, "heroTradeDiscount")));
 		reputationLostPerKill = integer(values, "reputationLostPerKill");
 	}
 

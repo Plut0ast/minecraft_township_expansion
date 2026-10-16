@@ -43,7 +43,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A town's nitwit armed with a sword becomes a Sentry: like an iron golem it fights hostile mobs in its
- * town and the town's Enemies. Following a Hero of its town, it guards that player instead. Only
+ * town and the town's Enemies. Following a Trusted player of its town, it guards that player instead. Only
  * nitwits can be Sentries; it is their job, and disarmed they are plain nitwits again.
  */
 public final class Sentry {
@@ -169,7 +169,7 @@ public final class Sentry {
 		return true;
 	}
 
-	/** The player this Sentry follows, if that player is a Hero of its town. */
+	/** The player this Sentry follows, if that player is Trusted (or better) by its town. */
 	private static @Nullable ServerPlayer heroOwner(Villager villager, ServerLevel level, BlockPos town) {
 		UUID ownerId = villager.getAttached(ModRegistry.COMMAND_OWNER);
 		ServerPlayer owner = ownerId == null ? null : level.getServer().getPlayerList().getPlayer(ownerId);
@@ -177,7 +177,7 @@ public final class Sentry {
 			return null;
 		}
 		int reputation = TownReputation.get(level).get(town, owner.getUUID());
-		return TownReputation.Rank.of(reputation) == TownReputation.Rank.HERO ? owner : null;
+		return TownReputation.Rank.of(reputation).ordinal() >= TownReputation.Rank.TRUSTED.ordinal() ? owner : null;
 	}
 
 	/** Where the Sentry is guarding and how far around it. */

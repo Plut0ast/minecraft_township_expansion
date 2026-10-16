@@ -30,7 +30,7 @@
   "gui.townsfolk.town_center.join": "Join",
   "gui.townsfolk.town_center.member": "Member",
   "gui.townsfolk.town_center.join_tooltip": "Join this town as one of its players",
-  "gui.townsfolk.town_center.join_locked": "Become a Hero of this town to join it",
+  "gui.townsfolk.town_center.join_locked": "Become Trusted by this town to join it",
   "gui.townsfolk.town_center.join_member": "You are one of this town's players",
   "gui.townsfolk.town_center.join_elsewhere": "Visit this town's Town Center to join it",
   "gui.townsfolk.town_center.no_player_towns": "No towns with players",

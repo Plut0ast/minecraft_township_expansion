@@ -1,5 +1,6 @@
 package com.townsfolk.mixin;
 
+import com.townsfolk.town.TownDiscounts;
 import com.townsfolk.town.VillagerStanding;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Player;
@@ -37,6 +38,11 @@ public abstract class VillagerTradeMixin {
 			this.lastTradedPlayer = trader; // vanilla uses this for the villager's own gossip about the trade
 			ci.cancel();
 		}
+	}
+
+	@Inject(method = "updateSpecialPrices", at = @At("TAIL"))
+	private void townsfolk$heroDiscount(Player player, CallbackInfo ci) {
+		TownDiscounts.apply((Villager) (Object) this, player);
 	}
 
 	@Inject(method = "setTradingPlayer", at = @At("HEAD"))

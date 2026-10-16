@@ -159,6 +159,11 @@ public final class ModRegistry {
 		.persistent(VillagerFood.Meal.CODEC)
 		.buildAndRegister(Townsfolk.id("meal"));
 
+	/** The player who cured this villager from a zombie villager; rewarded when it joins a town. */
+	public static final AttachmentType<UUID> CURED_BY = AttachmentRegistry.<UUID>builder()
+		.persistent(UUIDUtil.CODEC)
+		.buildAndRegister(Townsfolk.id("cured_by"));
+
 	/** The Minecraft day the villager last rerolled its trades. */
 	public static final AttachmentType<Long> LAST_ROLL_DAY = AttachmentRegistry.<Long>builder()
 		.persistent(Codec.LONG)

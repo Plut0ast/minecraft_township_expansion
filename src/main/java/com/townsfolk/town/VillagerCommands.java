@@ -58,8 +58,8 @@ public final class VillagerCommands {
 	}
 
 	/**
-	 * Only players of a villager's town may open its armour, hand and pockets (Sentries included).
-	 * Villagers with no town, and wandering traders, belong to no one, so anyone may.
+	 * Players of a villager's town, and anyone the town trusts, may open its armour, hand and pockets
+	 * (Sentries included). Villagers with no town, and wandering traders, belong to no one, so anyone may.
 	 */
 	public static boolean canEditGear(Player player, AbstractVillager villager) {
 		if (!(villager.level() instanceof ServerLevel level)) {
@@ -69,7 +69,8 @@ public final class VillagerCommands {
 		if (town == null || TownCenters.isDestroyed(level, town)) {
 			return true;
 		}
-		return TownRegistry.get(level).isMember(town, player.getUUID());
+		return TownRegistry.get(level).isMember(town, player.getUUID())
+			|| TownReputation.Rank.of(TownReputation.get(level).get(town, player.getUUID())).ordinal() >= TownReputation.Rank.TRUSTED.ordinal();
 	}
 
 	/** Friend (or better) with a villager's town may rename it; anyone may rename one with no town. */

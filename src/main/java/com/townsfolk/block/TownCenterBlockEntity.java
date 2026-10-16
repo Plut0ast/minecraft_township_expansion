@@ -11,6 +11,7 @@ import com.townsfolk.town.TownExile;
 import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownRegistry;
 import com.townsfolk.town.TownRelations;
+import com.townsfolk.town.TownRewards;
 import com.townsfolk.town.TownReputation;
 import com.townsfolk.town.VillagerNames;
 import java.util.ArrayList;
@@ -211,9 +212,9 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		return true;
 	}
 
-	/** Heroes of this town may join it as players. Returns whether the player joined. */
+	/** Trusted players (or better) may join the town as players. Returns whether the player joined. */
 	public boolean join(Player player) {
-		if (!(this.level instanceof ServerLevel serverLevel) || this.rankOf(player) != TownReputation.Rank.HERO || this.isMember(player)) {
+		if (!(this.level instanceof ServerLevel serverLevel) || !this.isTrustedBy(player) || this.isMember(player)) {
 			return false;
 		}
 		this.syncRegistry();
@@ -259,6 +260,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 				member.removeAttached(ModRegistry.EXILE);
 				if (member instanceof Villager villager) {
 					TownArrival.start(villager, serverLevel);
+					TownRewards.onJoinedTown(villager, serverLevel, townPos);
 				}
 				town = townPos;
 			}
@@ -396,7 +398,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.villagerJobs(), this.names(true), List.of(), 0,
 				this.banner.getItem(0), TownRelations.Relation.NEUTRAL.ordinal()));
 		}
-		boolean canJoin = this.rankOf(player) == TownReputation.Rank.HERO && !this.isMember(player);
+		boolean canJoin = this.isTrustedBy(player) && !this.isMember(player);
 		boolean canRemove = this.isTrustedBy(player) && this.isMember(player);
 		// The opened town's view must list villagers in the same order as these ids.
 		List<UUID> villagerIds = new ArrayList<>();

@@ -7,6 +7,8 @@
     "AbstractVillagerMixin",
     "BellBlockMixin",
     "LivingEntityMixin",
+    "RaidAccessor",
+    "ServerLevelMixin",
     "VillagerMixin",
     "VillagerTradeMixin"
   ],

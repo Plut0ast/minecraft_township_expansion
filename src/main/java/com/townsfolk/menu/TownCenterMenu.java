@@ -87,7 +87,7 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	}
 
 	/**
-	 * {@code canRename}: the viewer is Trusted by the opened town. {@code canJoin}: the viewer is a Hero
+	 * {@code canRename}: the viewer is Trusted by the opened town. {@code canJoin}: the viewer is Trusted
 	 * of the opened town and not yet one of its players. {@code canRemove}: the viewer is a Trusted
 	 * member and may remove villagers. {@code homeVillagerIds} matches the opened town's villager list.
 	 */

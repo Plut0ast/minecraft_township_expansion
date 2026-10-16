@@ -22,7 +22,7 @@ public class TownReputation extends SavedData {
 	 * starts at its threshold. Stranger covers everything between Enemy and Visitor.
 	 */
 	public enum Rank {
-		ENEMY(ENEMY_AT), STRANGER(ENEMY_AT + 1), VISITOR(10), FRIEND(50), TRUSTED(150), HERO(400);
+		ENEMY(ENEMY_AT), STRANGER(ENEMY_AT + 1), VISITOR(10), FRIEND(40), TRUSTED(120), HERO(300);
 
 		public final int threshold;
 
