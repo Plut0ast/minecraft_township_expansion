@@ -17,6 +17,9 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 /**
  * Villagers normally lay whatever they hold across their folded arms, which looks wrong for a sword.
@@ -37,7 +40,7 @@ public final class HeldWeapons {
 	 * in a hand hanging at the villager's right side, point forward and a little up, like a guard.
 	 */
 	public static final RenderStateDataKey<ItemStackRenderState> SPEAR = RenderStateDataKey.create(() -> "townsfolk:held_spear");
-	/** Set when the held weapon is an axe, which is turned over so its head sits the right way up. */
+	/** Set when the held weapon is an axe, which is turned over around its handle so its blade faces forward. */
 	public static final RenderStateDataKey<Boolean> AXE = RenderStateDataKey.create(() -> "townsfolk:held_axe");
 	/** Set while the villager is eating what it holds: its folded arms come up to its mouth. */
 	public static final RenderStateDataKey<Boolean> EATING = RenderStateDataKey.create(() -> "townsfolk:eating");
@@ -61,6 +64,10 @@ public final class HeldWeapons {
 	private static final float TURN_FORWARD = -90.0F;
 	/** Pushes it a little further out so the handle sits at the folded arms, not inside them. */
 	private static final float OUT_FROM_ARMS = 0.08F;
+	/** How far an axe is pulled back in towards the villager from where a sword sits. */
+	private static final float AXE_PULL_IN = 0.1F;
+	/** The handle's direction in an axe's icon: bottom-left to top-right. */
+	private static final Vector3f AXE_HANDLE = new Vector3f(1.0F, 1.0F, 0.0F).normalize();
 	/** Spears: the shoulder of an imaginary right arm at the villager's side (model pixels; right is negative x). */
 	private static final float SPEAR_SHOULDER_X = -5.5F;
 	private static final float SPEAR_SHOULDER_Y = -1.0F;
@@ -202,8 +209,11 @@ public final class HeldWeapons {
 		poseStack.scale(SCALE, SCALE, SCALE);
 		poseStack.translate(OUT_FROM_ARMS, 0.0F, 0.0F);
 		if (state.getData(AXE) != null) {
-			// An axe's icon has its head the other way round from a sword's blade.
-			poseStack.rotateDegrees(Axis.ZP, 180.0F);
+			// Back in towards the villager, so the handle sits in the folded arms.
+			poseStack.translate(-AXE_PULL_IN, 0.0F, 0.0F);
+			// Turned over around its own handle (the icon's bottom-left to top-right diagonal): the head
+			// stays at the top, but its blade faces the other way, out in front like a sword's edge.
+			poseStack.mulPose(new Matrix4f().rotation(new Quaternionf().rotateAxis((float) Math.PI, AXE_HANDLE)));
 		}
 	}
 }
