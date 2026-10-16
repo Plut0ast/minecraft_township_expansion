@@ -3,6 +3,7 @@ package com.townsfolk.client;
 import com.townsfolk.menu.TownCenterMenu;
 import com.townsfolk.town.RenameTownPayload;
 import com.townsfolk.town.TownNames;
+import com.townsfolk.town.TownRelations;
 import com.townsfolk.town.TownReputation;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -78,6 +79,8 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 	private Button nextButton;
 	private Button filterButton;
 	private Button joinButton;
+	/** In Join's place while viewing another town: how the opened town treats it. */
+	private Button relationButton;
 
 	public TownCenterScreen(TownCenterMenu menu, Inventory inventory, Component title) {
 		super(menu, inventory, title, 176, TownCenterMenu.INVENTORY_Y + 83);
@@ -222,6 +225,10 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		this.addRenderableWidget(this.nextButton);
 		this.addRenderableWidget(this.filterButton);
 		this.addRenderableWidget(this.joinButton);
+		this.relationButton = Button.builder(Component.empty(), b -> this.cycleRelation())
+			.bounds(x + 108, y + NAV_Y, 60, 18)
+			.build();
+		this.addRenderableWidget(this.relationButton);
 
 		this.refreshView();
 	}
@@ -261,6 +268,33 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 			? Component.translatable("gui.townsfolk.town_center.join_leaves", current)
 			: Component.translatable(joinTip);
 		this.joinButton.setTooltip(Tooltip.create(tip));
+
+		// Join is only for the opened town; for any other town that spot sets how this town treats it.
+		this.joinButton.visible = home || town == null;
+		this.relationButton.visible = !home && town != null;
+		if (town != null && !home) {
+			TownRelations.Relation relation = TownRelations.Relation.byId(town.relation());
+			String key = relation.name().toLowerCase(java.util.Locale.ROOT);
+			this.relationButton.setMessage(Component.translatable("gui.townsfolk.town_center.relation." + key));
+			this.relationButton.active = this.menu.canRename();
+			this.relationButton.setTooltip(Tooltip.create(this.menu.canRename()
+				? Component.translatable("gui.townsfolk.town_center.relation." + key + ".tooltip", this.menu.home().name(), town.name())
+				: Component.translatable("gui.townsfolk.town_center.relation.locked")));
+		}
+	}
+
+	/** Moves the opened town's stance on the town on screen to the next one: Enemy, Neutral, Good. */
+	private void cycleRelation() {
+		TownCenterMenu.TownView town = this.current();
+		if (town == null || this.viewingHome() || !this.menu.canRename()) {
+			return;
+		}
+		int index = this.menu.towns().indexOf(town);
+		TownRelations.Relation next = TownRelations.Relation.byId(town.relation()).next();
+		this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId,
+			TownCenterMenu.BUTTON_RELATION_FIRST + index * 3 + next.ordinal());
+		this.menu.setRelation(this.minecraft.player, index, next);
+		this.refreshView();
 	}
 
 	private void step(int direction) {

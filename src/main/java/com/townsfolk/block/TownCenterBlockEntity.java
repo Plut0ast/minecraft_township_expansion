@@ -10,6 +10,7 @@ import com.townsfolk.town.TownEvents;
 import com.townsfolk.town.TownExile;
 import com.townsfolk.town.TownNames;
 import com.townsfolk.town.TownRegistry;
+import com.townsfolk.town.TownRelations;
 import com.townsfolk.town.TownReputation;
 import com.townsfolk.town.VillagerNames;
 import java.util.ArrayList;
@@ -135,6 +136,11 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			return "";
 		}
 		this.syncRegistry();
+		// The new town starts out treating other towns the way the founder's old town did.
+		BlockPos oldTown = TownRegistry.get(serverLevel).townOf(founder.getUUID());
+		if (oldTown != null && !oldTown.equals(this.worldPosition)) {
+			TownRelations.get(serverLevel).copy(oldTown, this.worldPosition);
+		}
 		String left = TownRegistry.leaveAllTowns(serverLevel.getServer(), founder.getUUID());
 		TownRegistry.get(serverLevel).addMember(this.worldPosition, founder.getUUID(), founder.getName().getString());
 		return left;
@@ -211,6 +217,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 			Containers.dropContents(serverLevel, pos, this.banner);
 			TownReputation.get(serverLevel).clear(pos);
 			TownRegistry.get(serverLevel).remove(pos);
+			TownRelations.get(serverLevel).clear(pos);
 			AABB area = new AABB(pos).inflate(CLAIM_RADIUS * 2);
 			for (Mob member : serverLevel.getEntitiesOfClass(Mob.class, area, m -> pos.equals(m.getAttached(ModRegistry.TOWN)))) {
 				member.removeAttached(ModRegistry.TOWN);
@@ -287,6 +294,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		if (this.level instanceof ServerLevel serverLevel) {
 			this.syncRegistry();
 			TownReputation reputation = TownReputation.get(serverLevel);
+			TownRelations relations = TownRelations.get(serverLevel);
 			Map<BlockPos, TownRegistry.Town> all = TownRegistry.get(serverLevel).all();
 			List<BlockPos> order = new ArrayList<>(all.keySet());
 			order.remove(this.worldPosition);
@@ -296,13 +304,14 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 				TownRegistry.Town town = all.get(pos);
 				if (town != null) {
 					towns.add(new TownCenterMenu.TownView(pos, town.name(), town.villagers(), town.villagerJobs(), town.golems(),
-						new ArrayList<>(town.players().values()), reputation.get(pos, player.getUUID()), town.banner()));
+						new ArrayList<>(town.players().values()), reputation.get(pos, player.getUUID()), town.banner(),
+						relations.get(this.worldPosition, pos).ordinal()));
 				}
 			}
 		}
 		if (towns.isEmpty()) {
 			towns.add(new TownCenterMenu.TownView(this.worldPosition, this.townName, this.names(false), this.villagerJobs(), this.names(true), List.of(), 0,
-				this.banner.getItem(0)));
+				this.banner.getItem(0), TownRelations.Relation.NEUTRAL.ordinal()));
 		}
 		boolean canJoin = this.rankOf(player) == TownReputation.Rank.HERO && !this.isMember(player);
 		boolean canRemove = this.isTrustedBy(player) && this.isMember(player);
@@ -319,7 +328,7 @@ public class TownCenterBlockEntity extends BlockEntity implements ExtendedMenuPr
 		}
 		TownCenterMenu.TownView home = towns.getFirst();
 		towns.set(0, new TownCenterMenu.TownView(home.pos(), home.name(), villagerNames, villagerJobs, home.golems(), home.players(), home.reputation(),
-			this.banner.getItem(0)));
+			this.banner.getItem(0), home.relation()));
 		return new TownCenterMenu.Data(towns, this.isTrustedBy(player), canJoin, canRemove, villagerIds);
 	}
 

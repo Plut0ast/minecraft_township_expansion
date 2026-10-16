@@ -18,6 +18,7 @@ public class Townsfolk implements ModInitializer {
 	public void onInitialize() {
 		TownsfolkConfig.load();
 		com.townsfolk.town.TownCapes.register();
+		com.townsfolk.town.TownBellGlow.register();
 		ModRegistry.init();
 		TownEvents.init();
 		RenameTownPayload.register();

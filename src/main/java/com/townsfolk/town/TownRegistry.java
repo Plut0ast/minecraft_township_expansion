@@ -99,6 +99,16 @@ public class TownRegistry extends SavedData {
 		return this.towns.get(key(pos));
 	}
 
+	/** The town the player has joined in this dimension, or null. */
+	public @org.jspecify.annotations.Nullable BlockPos townOf(UUID player) {
+		for (Map.Entry<String, Town> entry : this.towns.entrySet()) {
+			if (entry.getValue().players().containsKey(player)) {
+				return BlockPos.of(Long.parseLong(entry.getKey()));
+			}
+		}
+		return null;
+	}
+
 	public boolean isMember(BlockPos pos, UUID player) {
 		Town town = this.towns.get(key(pos));
 		return town != null && town.players().containsKey(player);

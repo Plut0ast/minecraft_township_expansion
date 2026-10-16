@@ -11,6 +11,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import com.townsfolk.town.TownExile;
+import com.townsfolk.town.TownRelations;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.ItemTags;
@@ -34,13 +35,18 @@ public class TownCenterMenu extends AbstractContainerMenu {
 	public static final int INVENTORY_Y = 144;
 	private static final Identifier EMPTY_BANNER_ICON = Identifier.withDefaultNamespace("container/slot/banner");
 	public static final int BUTTON_JOIN = 0;
+	/**
+	 * Button ids from here up set how the opened town treats another town: (id - this) / 3 is the town's
+	 * index in {@link #towns()}, (id - this) % 3 the relation.
+	 */
+	public static final int BUTTON_RELATION_FIRST = 100_000;
 	/** Button ids from here up remove the opened town's villager at (id - this) in {@link #homeVillagerIds()}. */
 	public static final int BUTTON_REMOVE_FIRST = 100;
 
 	/** One town as shown in the screen; {@code reputation} is the viewer's reputation with it. */
 	/** {@code villagerJobs} lines up with {@code villagers}: a translation key for each villager's job. */
 	public record TownView(BlockPos pos, String name, List<String> villagers, List<String> villagerJobs, List<String> golems,
-		List<String> players, int reputation, ItemStack banner) {
+		List<String> players, int reputation, ItemStack banner, int relation) {
 		public static final StreamCodec<RegistryFriendlyByteBuf, TownView> STREAM_CODEC = StreamCodec.composite(
 			BlockPos.STREAM_CODEC, TownView::pos,
 			ByteBufCodecs.STRING_UTF8, TownView::name,
@@ -50,11 +56,12 @@ public class TownCenterMenu extends AbstractContainerMenu {
 			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), TownView::players,
 			ByteBufCodecs.VAR_INT, TownView::reputation,
 			ItemStack.OPTIONAL_STREAM_CODEC, TownView::banner,
+			ByteBufCodecs.VAR_INT, TownView::relation,
 			TownView::new
 		);
 
 		public TownView withName(String name) {
-			return new TownView(this.pos, name, this.villagers, this.villagerJobs, this.golems, this.players, this.reputation, this.banner);
+			return new TownView(this.pos, name, this.villagers, this.villagerJobs, this.golems, this.players, this.reputation, this.banner, this.relation);
 		}
 
 		public TownView withoutVillager(int index) {
@@ -64,13 +71,17 @@ public class TownCenterMenu extends AbstractContainerMenu {
 			if (index < jobs.size()) {
 				jobs.remove(index);
 			}
-			return new TownView(this.pos, this.name, villagers, jobs, this.golems, this.players, this.reputation, this.banner);
+			return new TownView(this.pos, this.name, villagers, jobs, this.golems, this.players, this.reputation, this.banner, this.relation);
 		}
 
 		public TownView withPlayer(String player) {
 			List<String> players = new ArrayList<>(this.players);
 			players.add(player);
-			return new TownView(this.pos, this.name, this.villagers, this.villagerJobs, this.golems, players, this.reputation, this.banner);
+			return new TownView(this.pos, this.name, this.villagers, this.villagerJobs, this.golems, players, this.reputation, this.banner, this.relation);
+		}
+
+		public TownView withRelation(int relation) {
+			return new TownView(this.pos, this.name, this.villagers, this.villagerJobs, this.golems, this.players, this.reputation, this.banner, relation);
 		}
 	}
 
@@ -204,7 +215,7 @@ public class TownCenterMenu extends AbstractContainerMenu {
 				List<String> players = new ArrayList<>(town.players());
 				players.remove(playerName);
 				this.towns.set(i, new TownView(town.pos(), town.name(), town.villagers(), town.villagerJobs(), town.golems(), players,
-					town.reputation(), town.banner()));
+					town.reputation(), town.banner(), town.relation()));
 			}
 		}
 		this.towns.set(0, this.home().withPlayer(playerName));
@@ -213,6 +224,10 @@ public class TownCenterMenu extends AbstractContainerMenu {
 
 	@Override
 	public boolean clickMenuButton(Player player, int buttonId) {
+		if (buttonId >= BUTTON_RELATION_FIRST) {
+			int id = buttonId - BUTTON_RELATION_FIRST;
+			return this.setRelation(player, id / 3, TownRelations.Relation.byId(id % 3));
+		}
 		if (buttonId >= BUTTON_REMOVE_FIRST) {
 			return this.removeVillager(player, buttonId - BUTTON_REMOVE_FIRST);
 		}
@@ -226,6 +241,19 @@ public class TownCenterMenu extends AbstractContainerMenu {
 			}
 			this.canJoin = false;
 		}
+		return true;
+	}
+
+	/** Sets how the opened town treats the town at {@code index}; only its Trusted players may. Both sides. */
+	public boolean setRelation(Player player, int index, TownRelations.Relation relation) {
+		if (!this.canRename || index <= 0 || index >= this.towns.size()) {
+			return false;
+		}
+		TownView town = this.towns.get(index);
+		if (player.level() instanceof ServerLevel level) {
+			TownRelations.get(level).set(this.pos(), town.pos(), relation);
+		}
+		this.towns.set(index, town.withRelation(relation.ordinal()));
 		return true;
 	}
 

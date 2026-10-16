@@ -63,5 +63,12 @@
   "message.townsfolk.town_center.founded_left": "%s · Left %s",
   "gui.townsfolk.town_center.move_title": "Are you sure you want to change towns?",
   "gui.townsfolk.town_center.move_message": "You can only be in one town. Joining will make you leave %s and join %s.",
-  "gui.townsfolk.town_center.sentries": "Sentries (%s)"
+  "gui.townsfolk.town_center.sentries": "Sentries (%s)",
+  "gui.townsfolk.town_center.relation.enemy": "Enemy",
+  "gui.townsfolk.town_center.relation.neutral": "Neutral",
+  "gui.townsfolk.town_center.relation.good": "Good",
+  "gui.townsfolk.town_center.relation.enemy.tooltip": "%s treats %s as an enemy: its villagers hide from them, and its iron golems and Sentries attack them. Click to change.",
+  "gui.townsfolk.town_center.relation.neutral.tooltip": "%s is neutral towards %s: its golems and Sentries only fight back if hit. Click to change.",
+  "gui.townsfolk.town_center.relation.good.tooltip": "%s is on good terms with %s: its golems and Sentries never attack them. Click to change.",
+  "gui.townsfolk.town_center.relation.locked": "Reach Trusted with this Town Center's town to choose how it treats other towns"
 }

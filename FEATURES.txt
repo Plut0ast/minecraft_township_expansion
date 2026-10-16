@@ -24,6 +24,16 @@ Town Center recipe:
     [Diamond] [ Planks  ] [Diamond]
     [Planks ] [ Planks  ] [Planks ]
 
+Town relations:
+Browsing another town at your Town Center, Trusted players can set how your town treats it:
+  Enemy    Your villagers hide from its members; your golems and Sentries attack them.
+  Neutral  Your golems and Sentries only fight back if hit (the default).
+  Good     Your golems and Sentries never attack them.
+Members means everyone in that town: villagers, Sentries, golems and its players. Each town
+sets its own stance.
+
+Ringing a bell makes the town's Town Center glow for a few seconds, through walls.
+
 Town banners:
 Trusted players can put a banner in the slot next to the town's name. Everyone browsing
 towns sees a small version of it on that town's page. Breaking the Town Center drops it.

@@ -4,6 +4,7 @@ import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.town.RepairPayloads;
 import com.townsfolk.town.Sentry;
 import com.townsfolk.town.TownCapes;
+import com.townsfolk.town.TownHiding;
 import com.townsfolk.town.TownArrival;
 import com.townsfolk.town.TownExile;
 import com.townsfolk.town.VillagerFood;
@@ -86,6 +87,9 @@ public abstract class VillagerMixin {
 		// Mid-meal the hand holds food, so nothing else may use the hand (or lead the villager off) until it is done.
 		if (VillagerFood.isEating(villager)) {
 			VillagerFood.afterBrainTick(villager, level);
+			return;
+		}
+		if (TownHiding.afterBrainTick(villager, level)) {
 			return;
 		}
 		VillagerCommands.afterBrainTick(villager, level);

@@ -57,6 +57,8 @@ public final class Sentry {
 	private static final double SWORD_SPEED = 1.6;
 	/** How long a Sentry's melee swing animation lasts. */
 	private static final int ATTACK_SWING_TICKS = 10;
+	/** A Sentry fights back against whoever hit it for this long. */
+	private static final int RETALIATE_TICKS = 200;
 	private static final int TARGET_SEARCH_INTERVAL_TICKS = 10;
 	private static final float CHASE_SPEED = 0.75F;
 	/** Archers draw for this long before loosing, like a skeleton (shorter if the bow cooldown is shorter). */
@@ -196,6 +198,10 @@ public final class Sentry {
 		if (command == VillagerCommands.Command.FARM || (command == VillagerCommands.Command.FOLLOW && hero == null)) {
 			return null;
 		}
+		LivingEntity attacker = villager.getLastHurtByMob();
+		if (attacker != null && isValidTarget(level, villager, town, attacker, hero, command)) {
+			return attacker;
+		}
 		Vec3 center = guardCenter(villager, hero);
 		double radius = guardRadius(command, hero);
 		AABB area = new AABB(center, center).inflate(radius);
@@ -206,7 +212,8 @@ public final class Sentry {
 
 	private static boolean isValidTarget(ServerLevel level, Villager villager, BlockPos town, @Nullable LivingEntity target,
 		@Nullable ServerPlayer hero, VillagerCommands.Command command) {
-		if (target == null || !target.isAlive() || target.level() != level || !isHostile(level, town, target)) {
+		if (target == null || !target.isAlive() || target.level() != level
+			|| !(isHostile(level, town, target) || isRetaliationTarget(level, villager, town, target))) {
 			return false;
 		}
 		Vec3 center = guardCenter(villager, hero);
@@ -218,16 +225,41 @@ public final class Sentry {
 		return hero != null || target.position().distanceTo(Vec3.atCenterOf(town)) <= TownCenterBlockEntity.CLAIM_RADIUS;
 	}
 
-	/** Hostile mobs (but not creepers or endermen, like iron golems) and Enemies of the town. */
+	/**
+	 * Hostile mobs (but not creepers or endermen, like iron golems), players who are Enemies of the town,
+	 * and every member (villager, Sentry, golem or player) of a town this one treats as an enemy.
+	 */
 	private static boolean isHostile(ServerLevel level, BlockPos town, LivingEntity entity) {
 		if (entity instanceof Monster) {
 			return !(entity instanceof Creeper) && !(entity instanceof Enderman);
 		}
-		if (TownsfolkConfig.sentriesAttackEnemies && entity instanceof ServerPlayer player && !player.isCreative() && !player.isSpectator()) {
-			int reputation = TownReputation.get(level).get(town, player.getUUID());
-			return TownReputation.Rank.of(reputation) == TownReputation.Rank.ENEMY;
+		if (entity instanceof ServerPlayer player && (player.isCreative() || player.isSpectator())) {
+			return false;
 		}
-		return false;
+		if (TownsfolkConfig.sentriesAttackEnemies && entity instanceof ServerPlayer player) {
+			int reputation = TownReputation.get(level).get(town, player.getUUID());
+			if (TownReputation.Rank.of(reputation) == TownReputation.Rank.ENEMY) {
+				return true;
+			}
+		}
+		return TownRelations.towards(level, town, entity) == TownRelations.Relation.ENEMY;
+	}
+
+	/**
+	 * Whoever just hit this Sentry, unless they are of its own town or a town it treats as Good:
+	 * Neutral towns (and anyone without a town) are only fought when they start it.
+	 */
+	private static boolean isRetaliationTarget(ServerLevel level, Villager villager, BlockPos town, LivingEntity target) {
+		if (target != villager.getLastHurtByMob() || villager.tickCount - villager.getLastHurtByMobTimestamp() > RETALIATE_TICKS) {
+			return false;
+		}
+		if (target instanceof ServerPlayer player && (player.isCreative() || player.isSpectator())) {
+			return false;
+		}
+		if (TownRelations.isMemberOf(level, town, target)) {
+			return false;
+		}
+		return TownRelations.towards(level, town, target) != TownRelations.Relation.GOOD;
 	}
 
 	/**
