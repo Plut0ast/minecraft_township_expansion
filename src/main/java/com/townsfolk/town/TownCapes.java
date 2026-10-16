@@ -46,10 +46,7 @@ public final class TownCapes {
 		}
 	}
 
-	/**
-	 * The banner of a town the player has joined. A player in several towns wears the banner of the
-	 * nearest one in their dimension.
-	 */
+	/** The banner of the town the player has joined, in any dimension. */
 	private static ItemStack playerBanner(MinecraftServer server, ServerPlayer player) {
 		ItemStack best = ItemStack.EMPTY;
 		double bestDistance = Double.MAX_VALUE;

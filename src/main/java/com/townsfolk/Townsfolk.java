@@ -27,6 +27,8 @@ public class Townsfolk implements ModInitializer {
 		RenameVillagerPayload.register();
 		RepairPayloads.register();
 		TownCommand.register();
+		// Town Centers are tracked per dimension; a world that closes must not leave its towns behind.
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(server -> com.townsfolk.town.TownCenters.clearLoaded());
 	}
 
 	public static Identifier id(String path) {

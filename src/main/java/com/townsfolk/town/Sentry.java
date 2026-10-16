@@ -77,7 +77,7 @@ public final class Sentry {
 		return !villager.isBaby() && villager.getVillagerData().profession().is(VillagerProfession.NITWIT);
 	}
 
-	/** A nitwit of a town holding a sword, axe, spear or bow. */
+	/** A nitwit of a town holding a sword, axe, spear, bow or crossbow. */
 	public static boolean isSentry(Villager villager) {
 		// A Sentry stays one while it eats, with its weapon put away.
 		ItemStack weapon = VillagerFood.heldOutsideMeals(villager);

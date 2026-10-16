@@ -3,7 +3,6 @@ package com.townsfolk.town;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.townsfolk.Townsfolk;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -156,10 +155,5 @@ public class TownRegistry extends SavedData {
 		if (this.towns.remove(key(pos)) != null) {
 			this.setDirty();
 		}
-	}
-
-	public List<String> playerNames(BlockPos pos) {
-		Town town = this.towns.get(key(pos));
-		return town == null ? List.of() : new ArrayList<>(town.players().values());
 	}
 }

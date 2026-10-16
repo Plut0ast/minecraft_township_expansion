@@ -73,6 +73,18 @@ public final class VillagerFood {
 	private VillagerFood() {
 	}
 
+	/**
+	 * A villager that dies mid-meal drops what it had put away to eat (a weapon or harvest a player gave
+	 * it), which otherwise only exists in the meal record. The food in its hand drops as usual.
+	 */
+	public static void onDeath(Villager villager, ServerLevel level) {
+		Meal meal = villager.getAttached(ModRegistry.MEAL);
+		if (meal != null && meal.handOwned() && !meal.previousHand().isEmpty()) {
+			villager.spawnAtLocation(level, meal.previousHand().copy());
+		}
+		villager.removeAttached(ModRegistry.MEAL);
+	}
+
 	/** True while the villager is eating from its hand. */
 	public static boolean isEating(Villager villager) {
 		return villager.getAttached(ModRegistry.MEAL) != null;

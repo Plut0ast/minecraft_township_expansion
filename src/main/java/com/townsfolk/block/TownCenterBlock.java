@@ -75,7 +75,7 @@ public class TownCenterBlock extends BaseEntityBlock {
 			message = Component.translatable("message.townsfolk.town_center.founded_alone", founded);
 		} else {
 			int distance = (int) Math.round(Math.sqrt(nearest.getBlockPos().distSqr(pos)));
-			message = Component.translatable("message.townsfolk.town_center.founded_near", founded, nearest.townName(), distance);
+			message = Component.translatable("message.townsfolk.town_center.founded_near", founded, nearest.displayTownName(), distance);
 		}
 		if (!left.isEmpty()) {
 			message = Component.translatable("message.townsfolk.town_center.founded_left", message, left);

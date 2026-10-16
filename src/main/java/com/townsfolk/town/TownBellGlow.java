@@ -8,7 +8,9 @@ import java.util.Iterator;
 import java.util.Map;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -29,13 +31,14 @@ public final class TownBellGlow {
 	private record Glow(Display.BlockDisplay display, long until) {
 	}
 
-	private static final Map<BlockPos, Glow> GLOWS = new HashMap<>();
+	private static final Map<GlobalPos, Glow> GLOWS = new HashMap<>();
 
 	private TownBellGlow() {
 	}
 
 	public static void register() {
 		ServerTickEvents.END_LEVEL_TICK.register(TownBellGlow::tick);
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> GLOWS.clear());
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Display.BlockDisplay display && display.entityTags().contains(TAG)
 				&& GLOWS.values().stream().noneMatch(glow -> glow.display() == display)) {
@@ -53,10 +56,11 @@ public final class TownBellGlow {
 			return;
 		}
 		BlockPos pos = town.getBlockPos();
+		GlobalPos key = GlobalPos.of(level.dimension(), pos);
 		long until = level.getGameTime() + GLOW_TICKS;
-		Glow existing = GLOWS.get(pos);
+		Glow existing = GLOWS.get(key);
 		if (existing != null && existing.display().isAlive()) {
-			GLOWS.put(pos, new Glow(existing.display(), until));
+			GLOWS.put(key, new Glow(existing.display(), until));
 			return;
 		}
 		Display.BlockDisplay display = EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.TRIGGERED);
@@ -69,12 +73,12 @@ public final class TownBellGlow {
 		display.setGlowingTag(true);
 		display.addTag(TAG);
 		level.addFreshEntity(display);
-		GLOWS.put(pos, new Glow(display, until));
+		GLOWS.put(key, new Glow(display, until));
 	}
 
 	private static void tick(ServerLevel level) {
 		long now = level.getGameTime();
-		Iterator<Map.Entry<BlockPos, Glow>> it = GLOWS.entrySet().iterator();
+		Iterator<Map.Entry<GlobalPos, Glow>> it = GLOWS.entrySet().iterator();
 		while (it.hasNext()) {
 			Glow glow = it.next().getValue();
 			if (glow.display().level() != level) {

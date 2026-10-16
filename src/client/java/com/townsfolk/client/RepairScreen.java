@@ -73,7 +73,7 @@ public class RepairScreen extends AbstractContainerScreen<RepairMenu> {
 		int cost = this.menu.cost();
 		Component line = cost > 0
 			? Component.translatable("gui.townsfolk.repair.cost", cost)
-			: Component.translatable("gui.townsfolk.repair.hint." + RepairMenu.Kind.values()[Math.floorMod(this.menu.data().kind(), 4)].name().toLowerCase());
+			: Component.translatable("gui.townsfolk.repair.hint." + RepairMenu.Kind.values()[Math.floorMod(this.menu.data().kind(), 4)].name().toLowerCase(java.util.Locale.ROOT));
 		graphics.text(this.font, line, this.imageWidth - 8 - this.font.width(line), 22, Panels.TEXT_LIGHT, false);
 	}
 }

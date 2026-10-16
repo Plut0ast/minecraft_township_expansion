@@ -71,6 +71,11 @@ public final class TownCenters {
 		}
 	}
 
+	/** Forgets every tracked Town Center (the world is closing). */
+	public static void clearLoaded() {
+		LOADED.clear();
+	}
+
 	public static void track(ServerLevel level, BlockPos pos) {
 		LOADED.computeIfAbsent(level.dimension(), k -> ConcurrentHashMap.newKeySet()).add(pos.immutable());
 	}

@@ -3,13 +3,17 @@ package com.townsfolk.town;
 import com.townsfolk.ModRegistry;
 import com.townsfolk.TownsfolkConfig;
 import com.townsfolk.block.TownCenterBlockEntity;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -27,8 +31,8 @@ public final class TownAlerts {
 
 	/** Raids already announced, and to which towns. */
 	private static final Map<Raid, Set<BlockPos>> ANNOUNCED_RAIDS = new WeakHashMap<>();
-	/** "town|player" for enemy players already announced as being in that town's area. */
-	private static final Set<String> ENEMIES_INSIDE = new HashSet<>();
+	/** Per dimension, "town|player" for enemy players already announced as being in that town's area. */
+	private static final Map<ResourceKey<Level>, Set<String>> ENEMIES_INSIDE = new HashMap<>();
 
 	private TownAlerts() {
 	}
@@ -48,6 +52,10 @@ public final class TownAlerts {
 			}
 		});
 		ServerTickEvents.END_LEVEL_TICK.register(TownAlerts::tick);
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			ANNOUNCED_RAIDS.clear();
+			ENEMIES_INSIDE.clear();
+		});
 	}
 
 	private static void tick(ServerLevel level) {
@@ -73,6 +81,7 @@ public final class TownAlerts {
 
 	/** Players from towns this town treats as enemies, and players who are personally its Enemies. */
 	private static void checkEnemies(ServerLevel level) {
+		Set<String> before = ENEMIES_INSIDE.getOrDefault(level.dimension(), Set.of());
 		Set<String> inside = new HashSet<>();
 		TownReputation reputation = TownReputation.get(level);
 		for (ServerPlayer player : level.players()) {
@@ -91,7 +100,7 @@ public final class TownAlerts {
 				}
 				String key = town.asLong() + "|" + player.getUUID();
 				inside.add(key);
-				if (!ENEMIES_INSIDE.contains(key)) {
+				if (!before.contains(key)) {
 					BlockPos theirs = TownRelations.townOf(level, player);
 					send(level, town, enemyTown && theirs != null
 						? Component.translatable("message.townsfolk.alert.enemy_town", townName(level, town), player.getDisplayName(),
@@ -100,16 +109,9 @@ public final class TownAlerts {
 				}
 			}
 		}
-		// Forget players who have left (in this dimension); other dimensions keep theirs.
-		String dimension = level.dimension().identifier().toString();
-		ENEMIES_INSIDE.removeIf(key -> !inside.contains(key) && DIMENSION_OF.getOrDefault(key, dimension).equals(dimension));
-		for (String key : inside) {
-			DIMENSION_OF.put(key, dimension);
-		}
-		ENEMIES_INSIDE.addAll(inside);
+		// Players who have left are forgotten, so they are announced again if they come back.
+		ENEMIES_INSIDE.put(level.dimension(), inside);
 	}
-
-	private static final Map<String, String> DIMENSION_OF = new java.util.HashMap<>();
 
 	private static Component townName(ServerLevel level, BlockPos town) {
 		TownRegistry.Town data = TownRegistry.get(level).town(town);

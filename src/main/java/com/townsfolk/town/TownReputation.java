@@ -49,7 +49,7 @@ public class TownReputation extends SavedData {
 		}
 
 		public Component displayName() {
-			return Component.translatable("rank.townsfolk." + this.name().toLowerCase());
+			return Component.translatable("rank.townsfolk." + this.name().toLowerCase(java.util.Locale.ROOT));
 		}
 	}
 

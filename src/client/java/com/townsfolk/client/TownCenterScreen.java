@@ -112,11 +112,6 @@ public class TownCenterScreen extends AbstractContainerScreen<TownCenterMenu> {
 		return town != null && town.pos().equals(this.menu.pos());
 	}
 
-	private boolean isMemberOfHome() {
-		String me = this.minecraft.player.getName().getString();
-		return this.menu.home().players().contains(me);
-	}
-
 	/**
 	 * Sections with headings for players, villagers, Sentries and golems. Empty sections are left out,
 	 * and a folded section shows only its heading.

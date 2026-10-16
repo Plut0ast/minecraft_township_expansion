@@ -293,6 +293,9 @@ public class TownCenterMenu extends AbstractContainerMenu {
 		}
 		TownView town = this.towns.get(index);
 		if (player.level() instanceof ServerLevel level) {
+			if (!(level.getBlockEntity(this.pos()) instanceof TownCenterBlockEntity home) || !home.isTrustedBy(player)) {
+				return false;
+			}
 			TownRelations.get(level).set(this.pos(), town.pos(), relation);
 		}
 		this.towns.set(index, town.withRelation(relation.ordinal()));

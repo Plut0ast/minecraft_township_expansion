@@ -80,15 +80,15 @@ public final class TownGuards {
 		return TownRelations.towards(level, town, entity) == TownRelations.Relation.ENEMY;
 	}
 
-	/** Golems never fight their own town, nor towns they are on good terms with (unless a player there is an Enemy). */
+	/**
+	 * Golems never fight their own town, nor towns they are on good terms with; a player who is
+	 * personally an Enemy of the town is never spared (the Enemy check below would only set them again).
+	 */
 	private static boolean spares(ServerLevel level, BlockPos town, LivingEntity target) {
-		if (TownRelations.isMemberOf(level, town, target)) {
-			return true;
-		}
-		if (TownRelations.towards(level, town, target) != TownRelations.Relation.GOOD) {
+		if (target instanceof ServerPlayer player
+			&& TownReputation.Rank.of(TownReputation.get(level).get(town, player.getUUID())) == TownReputation.Rank.ENEMY) {
 			return false;
 		}
-		return !(target instanceof ServerPlayer player
-			&& TownReputation.Rank.of(TownReputation.get(level).get(town, player.getUUID())) == TownReputation.Rank.ENEMY);
+		return TownRelations.isMemberOf(level, town, target) || TownRelations.towards(level, town, target) == TownRelations.Relation.GOOD;
 	}
 }

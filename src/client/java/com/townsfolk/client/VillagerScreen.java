@@ -78,7 +78,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	}
 
 	private static Component commandLabel(VillagerCommands.Command command) {
-		return Component.translatable("gui.townsfolk.villager.command." + command.name().toLowerCase());
+		return Component.translatable("gui.townsfolk.villager.command." + command.name().toLowerCase(java.util.Locale.ROOT));
 	}
 
 	@Override

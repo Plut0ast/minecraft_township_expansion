@@ -70,7 +70,12 @@ public final class TownEvents {
 				penalize(entity, source, -TownsfolkConfig.reputationLostPerHit);
 			}
 		});
-		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> penalize(entity, source, -TownsfolkConfig.reputationLostPerKill));
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			penalize(entity, source, -TownsfolkConfig.reputationLostPerKill);
+			if (entity instanceof Villager villager && villager.level() instanceof ServerLevel level) {
+				VillagerFood.onDeath(villager, level);
+			}
+		});
 
 		// Right-click trades as normal; shift-right-click (or right-clicking someone with nothing to trade) opens the view page.
 		UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
