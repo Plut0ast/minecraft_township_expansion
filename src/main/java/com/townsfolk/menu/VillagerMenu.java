@@ -35,14 +35,14 @@ public class VillagerMenu extends AbstractContainerMenu {
 	private static final Identifier EMPTY_HAND_ICON = Identifier.withDefaultNamespace("container/slot/sword");
 	public static final int BUTTON_COMMAND = 1;
 	public static final int EQUIPMENT_SLOTS = VillagerEquipmentContainer.SLOTS.length;
-	/** Every villager has this many pockets (vanilla has 8), shown beside its food slot. */
-	public static final int POCKETS = 3;
-	/** Where a farmer's carry slots sit, and how much taller the screen gets to fit them. */
+	/** Villagers have vanilla's 8 pockets; a nitwit's are all shown beside its food slot. */
+	public static final int POCKETS = 8;
+	/** Where the food slot and pockets sit, and how much taller the screen gets to fit them. */
 	public static final int CARRY_Y = 96;
 	public static final int CARRY_EXTRA_HEIGHT = 26;
-	/** The bottom row: food slot first, then the pockets after a small gap. */
+	/** The bottom row: food slot first, then the pockets (9 slots, the width of the hotbar). */
 	public static final int FOOD_X = 8;
-	public static final int POCKET_X = 34;
+	public static final int POCKET_X = 26;
 
 	private static final Map<EquipmentSlot, Identifier> EMPTY_ICONS = Map.of(
 		EquipmentSlot.HEAD, InventoryMenu.EMPTY_ARMOR_SLOT_HELMET,
@@ -124,7 +124,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 				Container food = villager instanceof Villager v ? new VillagerFoodContainer(v) : new SimpleContainer(1);
 				this.addSlot(new FoodSlot(food, FOOD_X, CARRY_Y, data.canFeed(), data.canEdit()));
 			}
-			// The villager's pockets: changing them needs Friend.
+			// A nitwit's pockets (arrows for archers): changing them needs the town's trust.
 			for (int i = 0; i < this.carrySlots(); i++) {
 				this.addSlot(new PocketSlot(villager.getInventory(), i, this.pocketX() + i * 18, CARRY_Y, data.canEdit(), false));
 			}
@@ -146,7 +146,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 			}
 		}
 
-		this.addStandardInventorySlots(inventory, 8, 104 + (this.carrySlots() > 0 ? CARRY_EXTRA_HEIGHT : 0));
+		this.addStandardInventorySlots(inventory, 8, 104 + (this.hasCarryRow() ? CARRY_EXTRA_HEIGHT : 0));
 	}
 
 	public Data data() {
@@ -163,12 +163,14 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return VillagerEquipmentContainer.HAND_INDEX + (this.data.showHand() ? 1 : 0);
 	}
 
-	/**
-	 * Villagers (not wandering traders) have a food slot, right after the armour and hand slots, unless
-	 * villager food is turned off in the settings.
-	 */
+	/** Nitwits (Sentries) have a food slot, right after the armour and hand slots. */
 	public boolean hasFoodSlot() {
-		return this.carrySlots() > 0 && this.data.showFood();
+		return this.data.showFood();
+	}
+
+	/** The bottom row holds the food slot and pockets; it is left out when there are neither. */
+	public boolean hasCarryRow() {
+		return this.hasFoodSlot() || this.carrySlots() > 0;
 	}
 
 	/** Pockets sit right of the food slot, or take its place when there is none. */
@@ -189,7 +191,7 @@ public class VillagerMenu extends AbstractContainerMenu {
 		return this.carryStart() + this.carrySlots();
 	}
 
-	/** Pocket slots shown on this menu (3 for villagers, 0 for wandering traders). */
+	/** Pocket slots shown on this menu (all 8 for nitwits, none for other villagers and wandering traders). */
 	public int carrySlots() {
 		return Math.min(this.data.carrySlots(), POCKETS);
 	}

@@ -2,7 +2,6 @@ package com.townsfolk;
 
 import com.townsfolk.town.RenameTownPayload;
 import com.townsfolk.town.RenameVillagerPayload;
-import com.townsfolk.town.RepairPayloads;
 import com.townsfolk.town.TownCommand;
 import com.townsfolk.town.TownEvents;
 import net.fabricmc.api.ModInitializer;
@@ -26,7 +25,7 @@ public class Townsfolk implements ModInitializer {
 		TownEvents.init();
 		RenameTownPayload.register();
 		RenameVillagerPayload.register();
-		RepairPayloads.register();
+		com.townsfolk.town.LegacyData.register();
 		TownCommand.register();
 		// Town Centers are tracked per dimension; a world that closes must not leave its towns behind.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(server -> com.townsfolk.town.TownCenters.clearLoaded());

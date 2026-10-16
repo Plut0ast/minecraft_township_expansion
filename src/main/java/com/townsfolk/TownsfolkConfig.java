@@ -21,22 +21,7 @@ public final class TownsfolkConfig {
 
 	private static final List<Setting> SETTINGS = new ArrayList<>();
 
-	// Trades
-	public static boolean dailyTradeRerolls;
-	public static boolean perPlayerStanding;
-	// Jobs
-	public static boolean villagerJobs;
-	public static boolean fishermen;
-	public static boolean shepherds;
-	public static boolean butchers;
-	public static boolean clerics;
-	public static boolean fletchers;
-	public static boolean smiths;
-	public static boolean smithGifts;
-	public static boolean repairVisits;
-	public static boolean playerRepairs;
 	// Villagers
-	public static boolean villagerFood;
 	public static boolean arrivalWalk;
 	public static boolean nitwitBabies;
 	public static boolean nitwitSpawnEggs;
@@ -61,7 +46,6 @@ public final class TownsfolkConfig {
 	public static boolean villagerCapes;
 	public static boolean playerCapes;
 	public static boolean generateTownCenters;
-	public static boolean farmChests;
 	public static boolean golemsAttackEnemies;
 	public static boolean followersTravel;
 	public static boolean townAlerts;
@@ -76,22 +60,7 @@ public final class TownsfolkConfig {
 	public static int reputationLostPerKill;
 
 	static {
-		section("Trades");
-		add("dailyTradeRerolls", "true", "Villagers reroll their trades every Minecraft morning.");
-		add("perPlayerStanding", "true", "Each villager remembers each player's own standing (Novice to Master), which decides which of its trades that player sees. Off = vanilla villager levels.");
-		section("Jobs");
-		add("villagerJobs", "true", "Master switch for all automatic villager jobs below (farmers' Farming order is separate).");
-		add("fishermen", "true", "Fishermen fish and keep the catch in their barrel.");
-		add("shepherds", "true", "Shepherds get a pen with sheep, shear them and store the wool.");
-		add("butchers", "true", "Butchers smoke raw meat and feed hungry villagers.");
-		add("clerics", "true", "Clerics heal hurt villagers.");
-		add("fletchers", "true", "Fletchers craft arrows and supply archer Sentries.");
-		add("smiths", "true", "Armourers, leatherworkers, weaponsmiths and toolsmiths do their work.");
-		add("smithGifts", "true", "Smiths give villagers armour and tools for free.");
-		add("repairVisits", "true", "Villagers take worn gear to a smith for a free repair.");
-		add("playerRepairs", "true", "The Repair button on smiths' trade screens.");
 		section("Villagers");
-		add("villagerFood", "false", "Villagers get a food slot, start with bread and fetch food from farmers and butchers. (Either way, villagers below half health eat food from their pockets.)");
 		add("arrivalWalk", "true", "Villagers walk to the Town Center and celebrate when they join a town.");
 		add("nitwitBabies", "true", "Babies can be born nitwits if a parent is one (50% with one nitwit parent, 100% with two).");
 		add("nitwitSpawnEggs", "true", "Villagers from spawn eggs have a 20% chance to be nitwits.");
@@ -116,7 +85,6 @@ public final class TownsfolkConfig {
 		add("villagerCapes", "true", "A town's villagers and Sentries wear the banner from its Town Center as a cape.");
 		add("playerCapes", "true", "Players who have joined a town wear its banner as a cape (in place of their own cape).");
 		add("generateTownCenters", "true", "Villages get a Town Center automatically when a player first visits.");
-		add("farmChests", "true", "Village farms get a chest with starter seeds.");
 		add("followersTravel", "true", "Following villagers keep their chunk loaded so they are never left behind, and follow their player to other dimensions.");
 		add("townAlerts", "true", "A town's players get a message above the hotbar when one of its villagers dies, a raid starts there, or an enemy player enters.");
 		add("golemsAttackEnemies", "true", "A town's iron golems attack players who are its Enemies.");
@@ -158,23 +126,11 @@ public final class TownsfolkConfig {
 			}
 		}
 		boolean missing = SETTINGS.stream().anyMatch(s -> s.key() != null && !values.containsKey(s.key()));
-		if (missing) {
+		boolean removed = values.stringPropertyNames().stream().anyMatch(key -> SETTINGS.stream().noneMatch(s -> key.equals(s.key())));
+		if (missing || removed) {
 			write(file, values);
 		}
 
-		dailyTradeRerolls = bool(values, "dailyTradeRerolls");
-		perPlayerStanding = bool(values, "perPlayerStanding");
-		villagerJobs = bool(values, "villagerJobs");
-		fishermen = bool(values, "fishermen");
-		shepherds = bool(values, "shepherds");
-		butchers = bool(values, "butchers");
-		clerics = bool(values, "clerics");
-		fletchers = bool(values, "fletchers");
-		smiths = bool(values, "smiths");
-		smithGifts = bool(values, "smithGifts");
-		repairVisits = bool(values, "repairVisits");
-		playerRepairs = bool(values, "playerRepairs");
-		villagerFood = bool(values, "villagerFood");
 		arrivalWalk = bool(values, "arrivalWalk");
 		sentries = bool(values, "sentries");
 		swordSentries = bool(values, "swordSentries");
@@ -197,7 +153,6 @@ public final class TownsfolkConfig {
 		villagerCapes = bool(values, "villagerCapes");
 		playerCapes = bool(values, "playerCapes");
 		generateTownCenters = bool(values, "generateTownCenters");
-		farmChests = bool(values, "farmChests");
 		golemsAttackEnemies = bool(values, "golemsAttackEnemies");
 		followersTravel = bool(values, "followersTravel");
 		townAlerts = bool(values, "townAlerts");

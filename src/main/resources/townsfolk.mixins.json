@@ -3,7 +3,6 @@
   "package": "com.townsfolk.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
-    "AbstractVillagerInvoker",
     "AbstractVillagerMixin",
     "BellBlockMixin",
     "LivingEntityMixin",

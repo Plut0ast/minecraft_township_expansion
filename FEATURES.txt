@@ -2,9 +2,9 @@ TOWNSHIP EXPANSION
 Fabric mod for Minecraft 26.3. Needs Fabric API and Java 25. Works in existing worlds.
 Source: https://github.com/Plut0ast/minecraft_township_expansion
 
-Villages become real towns. Every villager has a name, a job they actually do, and an
-opinion of you. Trade with a town to earn its trust, and it will open up: give orders,
-rename it, arm its guards, and join it as one of its own.
+Villages become real towns with a Town Center, and nitwits can be armed as Sentries to guard
+them. Every villager has a name, and every town has an opinion of you: earn its trust and it
+opens up. Everything else about villagers (jobs, trading, breeding) stays vanilla.
 
 
 TOWNS
@@ -17,12 +17,16 @@ TOWNS
 - Placing a Town Center tells you what you founded and how far away the nearest other
   town is.
 - Breaking a Town Center frees its villagers, and they look for another town.
-- Every village farm gets a chest with a few starter seeds.
 
 Town Center recipe:
     [      ] [ Map     ] [       ]
     [Diamond] [ Planks  ] [Diamond]
     [Planks ] [ Planks  ] [Planks ]
+
+Joining and extra Town Centers:
+You can only be a player of one town. Trusted players can join a town at its Town Center.
+Placing a Town Center while you are in a town adds it to your town (its area grows); to
+found a new town, use Leave at your Town Center first.
 
 Town relations:
 Browsing another town at your Town Center, Trusted players can set how your town treats it:
@@ -37,16 +41,20 @@ Ringing a bell makes the town's Town Center glow for a few seconds, through wall
 Town banners:
 Trusted players can put a banner in the slot next to the town's name. Everyone browsing
 towns sees a small version of it on that town's page. Breaking the Town Center drops it.
-The town's villagers, Sentries and players all wear its banner as a cape. A player in
-several towns wears the nearest one's banner. Turning off "Cape" in Skin Customization
-hides yours.
+The town's villagers, Sentries and players all wear its banner as a cape. Turning off
+"Cape" in Skin Customization hides yours.
+
+Town alerts:
+A town's players get a message above the hotbar when one of its villagers dies (and what
+killed it), a raid starts there, or an enemy player arrives.
 
 The Town Center screen shows:
 - Your rank with the town, with a progress bar showing how far you are from the next rank.
-- Everyone who lives there, listed as Players, Villagers (with their jobs) and Golems.
+- Everyone who lives there, listed as Players, Villagers (with their jobs), Sentries and
+  Golems. Click a heading to fold that list away.
 - Arrows to browse every other town in the dimension, and a filter that shows only towns
   with players.
-- Trusted players can rename the town, Heroes can join it, and Trusted members can remove
+- Trusted players can rename the town and join it, and Trusted members can remove
   villagers from it.
 
 
@@ -62,71 +70,38 @@ Hitting one of its villagers costs 5, and killing one costs another 25.
   Rank       Reputation    What it unlocks
   ---------  ------------  ------------------------------------------------------
   Enemy      -10 or less   Iron golems and Sentries attack you
-  Stranger   -9 to 9       You can still feed villagers
+  Stranger   -9 to 9       You can still feed Sentries
   Visitor    10+
   Friend     40+           Rename villagers
   Trusted    120+          Give orders, rename the town, arm nitwits, change villagers'
-                           gear and pockets, join the town, Sentries guard you
+                           armour and Sentries' gear, join the town, Sentries guard you
   Hero       300+          Cheaper trades with every villager in the town
-The town's players can always change its villagers' gear and pockets (Sentries too).
-You can only be a player of one town. Placing a Town Center while you are in a town adds it
-to your town (its area grows); to found a new town, use Leave at your Town Center first.
+The town's players can always change its villagers' armour and its Sentries' gear.
 
 
 VILLAGERS
 ---------
 - Every villager has a name, and a Friend can rename it.
-- Right-click to trade as usual. Shift-right-click to open its page: health, job, town,
-  armour, food and pockets.
+- Right-click to trade as usual. Shift-right-click to open its page: health, job, town
+  and armour.
 - Armour shows on the villager, protects it, and wears out like yours.
-- Food: below half health, a villager takes food from its pockets into its hand and eats
-  it to heal, then goes back to holding what it had. (The optional food slot setting adds
-  starting bread and trips to farmers and butchers for more.)
-- Orders (Trusted): Wandering, Staying, Following, and Farming for farmers. Followers go
-  back to Wandering if the player they follow logs off. Followers never get left behind
-  (flying, pearls, teleports) and come with you through portals to other dimensions.
-- Town alerts: a town's players get a message above the hotbar when one of its villagers
-  dies (and what killed it), a raid starts there, or an enemy player arrives.
-- Villagers with worn-out gear walk to the right smith to get it repaired.
-
-Trades and your standing:
-Every villager rerolls its trades each Minecraft morning. It also remembers how much YOU
-have traded with it. That standing runs from Novice to Master, unlocks more of its trades
-for you, and carries over between rerolls.
+- Orders (Trusted): Wandering, Staying, Following. Followers go back to Wandering if the
+  player they follow logs off. Followers never get left behind (flying, pearls,
+  teleports) and come with you through portals to other dimensions.
+- When a villager dies, it drops everything it carried.
+- Jobs, trading and breeding are vanilla (apart from more nitwits, below).
 
 
-JOBS
-----
-Villagers work on their own during the day, near their workstation.
-
-  Farmer         When ordered to farm: harvests, replants, and stores crops in the
-                 nearest chest
-  Fisherman      Fishes at nearby water and keeps the catch in its barrel
-  Shepherd       Gets a fenced pen with three sheep, shears them, and stores the wool
-  Butcher        Smokes raw meat from its chest and feeds hungry villagers
-  Cleric         Heals hurt villagers nearby
-  Fletcher       Crafts arrows from flint, sticks and feathers, and keeps archers supplied
-  Armorer        Repairs armour and kits Sentries out in chainmail and iron
-  Leatherworker  Repairs leather armour and gives other villagers leather armour
-  Weaponsmith    Repairs weapons and hands out iron hoes, axes and shears
-  Toolsmith      Repairs tools, including any left in its chest, for an emerald each
-  Mason, Librarian, Cartographer: coming later
-
-Get your gear repaired:
-Smiths have a Repair button next to their trade screen. Put in your damaged item and some
-emeralds, and it comes back repaired with its enchantments kept.
-  1 emerald:  leather, wood or gold
-  2 emeralds: stone, chainmail or iron
-  4 emeralds: diamond or netherite armour
-  6 emeralds: netherite tools
-
-
-NITWITS, SENTRIES & GOLEMS
---------------------------
-- Give a nitwit a sword, axe, spear, bow or crossbow (you need to be Trusted) and it becomes a Sentry.
-  Sentries fight hostile mobs in their town and attack the town's Enemies. Archers shoot
-  arrows from their pockets. Crossbow Sentries load and fire like pillagers.
-- A Sentry that follows a Hero becomes that Hero's bodyguard.
+NITWITS & SENTRIES
+------------------
+- Give a nitwit a sword, axe, spear, bow or crossbow (you need to be Trusted) and it
+  becomes a Sentry. Sentries fight hostile mobs in their town and attack the town's
+  Enemies. Archers shoot arrows from their pockets; crossbow Sentries load and fire like
+  pillagers.
+- A Sentry that follows a Trusted player becomes their bodyguard.
+- A nitwit's page also shows its 8 pockets (where archers keep arrows) and a food slot.
+  Below half health it eats from the food slot, then goes back to its weapon. The food
+  slot is separate from its inventory, so it never affects breeding.
 - Nitwit babies need a nitwit parent: 50% with one nitwit parent, 100% with two. Two
   normal villagers never have a nitwit. Spawn eggs give a nitwit 20% of the time.
 - Iron golems get names like Rivet-42, join towns, and go after the town's Enemies.
@@ -148,9 +123,10 @@ For operators, or in single-player with cheats on. Tab completes town names, and
 SETTINGS
 --------
 The file config/townsfolk.properties is created the first time the game starts.
-Set any option to false to turn that feature off (for example dailyTradeRerolls=false).
-Every job, Sentries (weapons, range, damage, cooldowns, bodyguards), repairs, food, farm chests, Town Center generation, nitwit chances
-and the reputation amounts can be changed. Use /town reload or restart to apply.
+Set any option to false to turn that feature off (for example sentries=false).
+Sentries (weapons, range, damage, cooldowns, bodyguards), capes, alerts, Town Center
+generation, nitwit chances and the reputation amounts can be changed. Use /town reload
+or restart to apply.
 
 
 Township Expansion is still in development, so expect changes.

@@ -41,9 +41,6 @@ public final class TownEvents {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof AbstractVillager villager) {
 				VillagerNames.ensureNamed(villager);
-				if (villager instanceof Villager v) {
-					VillagerFood.giveStartingFood(v);
-				}
 			} else if (entity instanceof IronGolem golem) {
 				VillagerNames.ensureGolemNamed(golem);
 			}
@@ -207,12 +204,13 @@ public final class TownEvents {
 			canTrade(villager),
 			VillagerCommands.canCommand(player, villager),
 			VillagerCommands.canEditGear(player, villager),
-			villager instanceof Villager ? villager.getInventory().getContainerSize() : 0,
+			// Only nitwits (Sentries) show their inventory and food slot; other villagers' are vanilla's own.
+			villager instanceof Villager v5 && VillagerFood.hasFoodSlot(v5) ? villager.getInventory().getContainerSize() : 0,
 			villager instanceof Villager v3 && Sentry.canBecomeSentry(v3) && VillagerCommands.canCommand(player, villager),
 			villager instanceof Villager v2 && VillagerFood.canFeed(player, v2),
 			villager instanceof Villager v4 && v4.getVillagerData().profession().is(VillagerProfession.NITWIT),
 			VillagerCommands.canRename(player, villager),
-			TownsfolkConfig.villagerFood
+			villager instanceof Villager v6 && VillagerFood.hasFoodSlot(v6)
 		);
 
 		player.openMenu(new ExtendedMenuProvider<VillagerMenu.Data>() {

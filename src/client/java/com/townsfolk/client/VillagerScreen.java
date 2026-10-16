@@ -39,7 +39,7 @@ public class VillagerScreen extends AbstractContainerScreen<VillagerMenu> {
 	private float yMouse;
 
 	public VillagerScreen(VillagerMenu menu, Inventory inventory, Component title) {
-		super(menu, inventory, title, 176, 186 + (menu.carrySlots() > 0 ? VillagerMenu.CARRY_EXTRA_HEIGHT : 0));
+		super(menu, inventory, title, 176, 186 + (menu.hasCarryRow() ? VillagerMenu.CARRY_EXTRA_HEIGHT : 0));
 		this.inventoryLabelY = this.imageHeight - 94;
 	}
 

@@ -33,7 +33,7 @@ public class VillagerEquipmentContainer implements Container {
 	}
 
 	/**
-	 * Puts something in the villager's hand from code (a farmer's harvest), marking it so villager AI
+	 * Puts something in the villager's hand from code (a weapon put back after a meal), marking it so villager AI
 	 * will not swap it out, and so it drops if the villager dies.
 	 */
 	public static void setHand(AbstractVillager villager, ItemStack stack) {

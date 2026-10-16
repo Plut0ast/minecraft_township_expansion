@@ -185,8 +185,6 @@ public final class TownCenters {
 				continue;
 			}
 
-			FarmChests.ensurePlaced(level, village);
-
 			long key = village.getChunkPos().pack();
 			if (data.isHandled(key)) {
 				continue;

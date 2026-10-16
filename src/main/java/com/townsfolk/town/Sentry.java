@@ -194,8 +194,8 @@ public final class Sentry {
 
 	private static @Nullable LivingEntity findTarget(ServerLevel level, Villager villager, BlockPos town, @Nullable ServerPlayer hero,
 		VillagerCommands.Command command) {
-		// A follower who is not guarding a Hero just follows; other orders (and farming) leave fighting to others.
-		if (command == VillagerCommands.Command.FARM || (command == VillagerCommands.Command.FOLLOW && hero == null)) {
+		// A follower who is not guarding a player just follows.
+		if (command == VillagerCommands.Command.FOLLOW && hero == null) {
 			return null;
 		}
 		LivingEntity attacker = villager.getLastHurtByMob();
